@@ -40,6 +40,7 @@ class BrowserTests(unittest.TestCase):
                             self.assertFalse(page.get_by_role('button',name='复制接续指令',exact=True).is_visible())
                             if mode in ('talk','hybrid'):
                                 page.get_by_label('选择本地真人视频',exact=True).wait_for()
+                                self.assertEqual(page.locator('#step-content input').first.get_attribute('type'),'file')
                                 page.get_by_label('参考文稿（可选）',exact=True).fill('Persistent '+mode)
                             elif mode=='footage':page.get_by_label('完整解说文案',exact=True).fill('Persistent footage')
                             else:

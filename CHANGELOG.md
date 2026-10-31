@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.1.0-prototype.7
+
+- Match the original import-step hierarchy: video selection precedes optional project text, keeping the first action visible immediately.
+- Include the full original six-step restoration from prototype.6 with real backend capabilities preserved.
+
 ## 0.1.0-prototype.6
 
 - Restore the approved original four V2 workflows, each with its exact six step labels and order, right-side plan and bottom navigation.
