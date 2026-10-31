@@ -51,16 +51,16 @@ def scan(root, staged=False):
 def inventory(root):
     label='本地交互原型 · '+version(root)
     (Path(root)/'prototype').mkdir(exist_ok=True)
-    (Path(root)/'prototype/version.js').write_text('document.getElementById("version").textContent='+json.dumps(label,ensure_ascii=False)+';\n',encoding='utf-8')
+    (Path(root)/'prototype/version.js').write_text('document.getElementById("version").textContent='+json.dumps(label,ensure_ascii=False)+';\n',encoding='utf-8',newline='\n')
     files=git(root,'ls-files','--cached','--others','--exclude-standard','-z').stdout.split('\0')
     output={}
     for name in sorted(set(filter(None,files))):
         if name=='manifests/release-files.json':continue
         path=Path(root)/name
-        if path.is_file():output[name]=hashlib.sha256(path.read_bytes()).hexdigest()
+        if path.is_file():output[name]=hashlib.sha256(path.read_bytes().replace(b'\r\n',b'\n')).hexdigest()
     destination=Path(root)/'manifests/release-files.json'
     destination.parent.mkdir(parents=True,exist_ok=True)
-    destination.write_text(json.dumps(output,ensure_ascii=False,indent=2)+'\n',encoding='utf-8')
+    destination.write_text(json.dumps(output,ensure_ascii=False,indent=2)+'\n',encoding='utf-8',newline='\n')
 
 
 def next_version(current, previous):
@@ -88,7 +88,7 @@ def publish(root=ROOT, message='Update workbench source', bump=True):
         if changed:
             previous = git(root,'show','HEAD:VERSION',check=False).stdout.strip() if has_head else ''
             if bump:
-                (root/'VERSION').write_text(next_version(version(root), previous)+'\n',encoding='utf-8')
+                (root/'VERSION').write_text(next_version(version(root), previous)+'\n',encoding='utf-8',newline='\n')
             inventory(root)
             git(root,'add','--all','--','.')
             # Scan again after staging, never silently omit a suspicious file.
