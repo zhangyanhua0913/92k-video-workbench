@@ -77,7 +77,7 @@ def publish(root=ROOT, message='Update workbench source', bump=True):
     root = Path(root).resolve()
     config = state_dir(root)/'author.json'
     if not config.exists() or json.loads(config.read_text()) != {'root':str(root),'remote':REMOTE,'enabled':True}:
-        return {'status':'disabled', 'hint':'Author auto-publish is opt-in on this machine only'}
+        return {'status':'disabled', 'root':str(root),'config':str(config),'hint':'Author auto-publish is opt-in on this machine only'}
     with gate(root):
         if git(root,'remote','get-url','origin').stdout.strip() != REMOTE: raise ValueError('Unexpected remote')
         if git(root,'branch','--show-current').stdout.strip() != 'main': raise ValueError('Author publishing requires main')

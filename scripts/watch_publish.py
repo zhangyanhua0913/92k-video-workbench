@@ -7,7 +7,7 @@ import subprocess
 import sys
 import threading
 import time
-from publish import ROOT, publish
+from publish import ROOT
 from versioning import Lock, state_dir
 
 
@@ -46,7 +46,12 @@ while($true) {
         changes.put(None)
     threading.Thread(target=reader,daemon=True).start()
     def run():
-        try: result=publish(message='Auto-publish source changes after 30 seconds idle')
+        try:
+            # Reload publisher code every event batch; do not keep yesterday's rules in memory.
+            completed=subprocess.run([str(Path(sys.executable).with_name('python.exe')),str(ROOT/'scripts/publish.py'),
+                '--message','Auto-publish source changes after 30 seconds idle'],capture_output=True,text=True,
+                encoding='utf-8',timeout=120,creationflags=subprocess.CREATE_NO_WINDOW)
+            result=json.loads(completed.stdout)
         except Exception as exc: result={'status':'error','type':type(exc).__name__}
         with (state/'publish.log').open('a',encoding='utf-8') as f:
             f.write(json.dumps({'time':time.strftime('%Y-%m-%dT%H:%M:%S%z'),**result},ensure_ascii=False)+'\n')
@@ -54,7 +59,7 @@ while($true) {
         run()  # One startup reconciliation, including a pending failed push.
         while True:
             event=changes.get()
-            if event is None: break
+            if event is None: raise RuntimeError('File event helper exited')
             while True:
                 try:
                     event=changes.get(timeout=30)
