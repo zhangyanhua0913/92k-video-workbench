@@ -24,12 +24,15 @@ python scripts/workbench.py api --path /api/action --input ABS_REQUEST_JSON
 | GET /api/project?id=ID | 已登记ID | 原工具状态、调用job、当前状态和历史输出 |
 | POST /api/create | mode、title、可选parent绝对目录 | 创建独立工程，返回id/root/mode/title |
 | POST /api/register | root绝对目录、可选mode | 检查唯一工程类型和ID，登记索引；不迁移 |
+| POST /api/preferences | id、revision、patch | 保存step(0–5)、素材/生成风格意向或feedback；项目内workbench-ui.json，独立revision冲突保护，不修改制作数据库和预算 |
 | POST /api/action | id、action、可选data对象 | 独立进程调用固定适配器；短动作直接返回，长动作返回job/status |
 | POST /api/tool | id、可选review请求ID | 返回该工程的同源编辑/审阅页路径 |
 | POST /api/upload?id=ID | 文件原始字节、X-Filename、可选X-File-Kind | 分块保存临时文件并导入工程，返回原工具导入结果；上限2GB，生成工具自身更低限制继续适用 |
 | GET /media?id=ID&file=REL | 素材工程的媒体/字幕相对路径 | 鉴权读取，支持视频Range；不提供数据库/私密状态 |
 
 mode为talk/footage/generate/hybrid。错误为HTTP状态＋message：401会话失效、403来源/路径拒绝、404未登记、409执行占用/版本冲突；子工具错误沿用其状态。读取失败不自动创建新工程。
+
+GET project新增preferences，缺记录时返回schema=1/revision=0/step=0，不写旧工程。显式保存UI位置后可刷新恢复；风格及费用仍用原权威接口。POST tool返回路径可附`panel=roughcut/packaging/keyframes/storyboard/voices/budget/assets/final/config`供真实工作台嵌入对应步骤；只是展示过滤，独立工具页不变。内嵌保存使用同源/同window校验的postMessage回执，保存失败不离开当前步骤。
 
 ## 操作与顺序
 

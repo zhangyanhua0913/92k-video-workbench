@@ -235,7 +235,27 @@ class Workspace:
         elif jobs and jobs[0]['result'] and jobs[0]['result'].get('execution') == 'agent': status = '等待 Agent'
         elif s.get('source') or s.get('shots'): status = '可执行'
         elif s.get('script'): status = '等待 Agent'
-        return {'entry': row, 'state': result, 'jobs': jobs, 'status': status, 'outputs': [x['result'] for x in rendered]}
+        return {'entry': row, 'state': result, 'jobs': jobs, 'status': status, 'outputs': [x['result'] for x in rendered], 'preferences': self.preferences(pid)}
+
+    def preferences(self, pid, patch=None, revision=None):
+        """UI position and creative intent; never a second engine or financial ledger."""
+        with self.gate(pid):
+            row, root, state = self.project(pid)
+            path = root / 'workbench-ui.json'
+            value = json.loads(path.read_text(encoding='utf-8')) if path.exists() else {'schema': 1, 'revision': 0, 'step': 0}
+            check(value.get('schema') == 1, '界面记录版本暂不支持。')
+            if patch is None: return value
+            check(revision == value['revision'], '另一页面已更新制作步骤，请刷新。', 409)
+            check(set(patch) <= {'step', 'style', 'feedback'}, '未知界面字段。')
+            if 'step' in patch: check(type(patch['step']) is int and 0 <= patch['step'] <= 5, '步骤无效。')
+            if 'style' in patch: check(patch['style'] in ({'footage', 'free'} if row['mode'] == 'footage' else {'director'} if row['mode'] == 'generate' else set()), '风格选择须使用原制作接口。')
+            if 'feedback' in patch:
+                check(isinstance(patch['feedback'], str) and len(patch['feedback']) <= 10000, '修改意见过长。')
+                patch = {**patch, 'feedback_project_revision': state['revision']}
+            value = {**value, **patch, 'revision': value['revision'] + 1}
+            temporary = path.with_suffix('.tmp')
+            temporary.write_text(json.dumps(value, ensure_ascii=False, indent=2), encoding='utf-8'); temporary.replace(path)
+            return value
 
     def child(self, pid):
         with self.child_lock:
@@ -313,7 +333,7 @@ class Handler(BaseHTTPRequestHandler):
         try:
             path = urlsplit(self.path).path
             ws = self.server.workspace
-            if not write and path in ('/', '/app.js', '/style.css'):
+            if not write and path in ('/', '/app.js', '/style.css', '/hosted.js'):
                 check(self.headers.get('Host') == self.server.origin.removeprefix('http://'), 'Host无效。', 403)
                 file = ROOT / 'prototype' / 'live' / ('index.html' if path == '/' else path[1:])
                 import mimetypes
@@ -335,6 +355,7 @@ class Handler(BaseHTTPRequestHandler):
             if path == '/api/bootstrap': return self.reply({'ok': True}, cookie=True)
             if path == '/api/create': return self.reply(ws.create(data['mode'], data['title'], data.get('parent')))
             if path == '/api/register': return self.reply(ws.register(data['root'], data.get('mode')))
+            if path == '/api/preferences': return self.reply(ws.preferences(data['id'], data['patch'], data['revision']))
             if path == '/api/action':
                 return self.reply(ws.call(data['id'], data['action'], data.get('data'), data['action'] in LONG))
             if path == '/api/tool':
@@ -343,7 +364,7 @@ class Handler(BaseHTTPRequestHandler):
                 return self.reply({'url': '/tool/' + data['id'] + '/' + query, 'mode': row['mode']})
             raise WorkspaceError('地址不存在。', 404)
         except WorkspaceError as error: self.reply({'message': str(error)}, error.status)
-        except (BrokenPipeError, ConnectionResetError): pass
+        except (BrokenPipeError, ConnectionResetError, ConnectionAbortedError): pass
         except (ValueError, KeyError, TypeError): self.reply({'message': '输入格式无效，请刷新后核对。'}, 400)
         except Exception: self.reply({'message': '本地操作失败，原项目保留，请核查依赖与目录。'}, 500)
 
@@ -450,6 +471,10 @@ class Handler(BaseHTTPRequestHandler):
                     if path == '/app.js' and row['mode'] != 'generate':
                         text = text.replace("area=null,", "area='" + row['mode'] + "',").replace("tab='home'", "tab='project'")
                         text = text.replace("batch:'批量处理',", '').replace("button('选择功能'", "button('项目与素材'")
+                    panel = parse_qs(urlsplit(self.path).query).get('panel', [''])[0]
+                    if path == '/' and panel:
+                        check(panel in ('project', 'roughcut', 'workflow', 'packaging', 'keyframes', 'final', 'config', 'storyboard', 'voices', 'budget', 'assets'), '未知编辑面板。')
+                        text = text.replace('</body>', '<script src="/hosted.js?engine=' + row['mode'] + '&panel=' + panel + '"></script></body>')
                     raw = text.encode('utf-8')
                 self.send_response(response.status); self.common(embedded=True)
                 for key in ('Content-Type', 'Content-Range', 'Accept-Ranges'):

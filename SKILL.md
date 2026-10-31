@@ -5,6 +5,8 @@ description: 打开92k视频工作台，统一管理本地工程，按口播剪�
 
 # 92k 视频创作工作台
 
+先遵守根AGENTS.md：原V2四入口各六步是用户已确认的流程。不得因技术接入或Agent操作改名、重排、合并步骤；确需改变时先说明并取得用户确认。真实页按步骤编辑，诊断/恢复/重试/接续在默认折叠的项目工具。api/preferences只保存UI位置/创意意向，不授权执行；Agent可读取当前步骤，不能把跳步或保存草稿当预算/素材/最终确认。
+
 本目录是完整Git仓库。先运行 `python scripts/workbench.py check-update`，读取JSON结果，再重新读取更新后的本文件和所选子Skill指令。每个新制作会话检查一次；进行中的项目/审阅服务先结束或暂停再更新，不在单个项目每一步中反复升级。
 
 `updated/unchanged` 可继续；`offline/archive_install/local_changes/local_history/custom_branch/different_remote/active_session` 说明没有升级，告诉用户当前版本及原因，保留原目录与任务，可以继续现有版本。禁止为更新运行reset --hard、clean、强制拉取、自动stash或覆盖用户改动。ZIP安装不支持Git自动更新；建议git clone。用户要固定版本或离线时用 `--no-update`。

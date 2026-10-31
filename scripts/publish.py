@@ -7,7 +7,7 @@ import re
 from versioning import REMOTE, gate, git, state_dir, version
 
 ROOT = Path(__file__).resolve().parents[1]
-TOP_FILES = {'README.md','SKILL.md','LICENSE','THIRD_PARTY_NOTICES.md','CHANGELOG.md','CONTRIBUTING.md','VERSION','.gitignore','.gitattributes'}
+TOP_FILES = {'README.md','AGENTS.md','SKILL.md','LICENSE','THIRD_PARTY_NOTICES.md','CHANGELOG.md','CONTRIBUTING.md','VERSION','.gitignore','.gitattributes'}
 TOP_DIRS = {'prototype','skills','docs','scripts','tests','agents','manifests','examples'}
 SUFFIXES = {'.py','.md','.json','.yaml','.yml','.html','.css','.js','.ts','.tsx','.txt','.svg','.toml','.lock'}
 BLOCK_PARTS = {'private','runtime','projects','exports','media','node_modules','__pycache__','.venv','user','local','reference-studies'}

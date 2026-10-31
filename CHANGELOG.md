@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.1.0-prototype.6
+
+- Restore the approved original four V2 workflows, each with its exact six step labels and order, right-side plan and bottom navigation.
+- Keep real project/import/edit/style/review/export adapters; move diagnostics, recovery, retry and Agent handoff into collapsed project tools.
+- Save before changing steps, retain the current step on failure, and resume saved UI position without granting execution or budget approval.
+- Present model/budget and voice controls in their corresponding generation steps; standalone editors remain compatible.
+- Persist the user's requirement to explain and obtain confirmation before future changes to workflow steps or primary interaction.
+
 ## 0.1.0-prototype.5
 
 - Real `open` workspace, separate from the retained static `preview`: four modes, persistent project registration, legacy-project discovery and same-origin editors.

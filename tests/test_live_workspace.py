@@ -62,6 +62,16 @@ class LiveTests(unittest.TestCase):
         with self.assertRaises(WorkspaceError): self.ws.call(self.pid, 'update', {'patch': {'script': 'stale'}, 'revision': s['revision']})
         self.assertEqual(self.ws.call(self.pid, 'show')['project']['script'], 'first')
 
+    def test_ui_preferences_do_not_approve_or_change_engine(self):
+        original=self.ws.call(self.pid,'show')['project']
+        prefs=self.ws.preferences(self.pid)
+        self.ws.preferences(self.pid,{'step':3},prefs['revision'])
+        self.assertEqual(Workspace(self.ws.home).snapshot(self.pid)['preferences']['step'],3)
+        self.assertEqual(self.ws.call(self.pid,'show')['project'],original)
+        self.assertEqual(self.ws.call(self.pid,'show')['reviews'],[])
+        with self.assertRaises(WorkspaceError):self.ws.preferences(self.pid,{'step':4},prefs['revision'])
+        with self.assertRaises(WorkspaceError):self.ws.preferences(self.pid,{'step':6},1)
+
     def test_style_upgrade_requires_explicit_adoption(self):
         path = Path(self.entry['root'])/'workbench-style.json'
         data = json.loads(path.read_text())
