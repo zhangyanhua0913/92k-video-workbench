@@ -12,6 +12,7 @@ from core import home, check, atomic, file_hash
 
 FRED_REVISION = 'eec77dcfa99318f565c391bf557f5d43042ec061'
 SPECS = [
+    dict(id='local-cuts', name='本地剪切与字幕', stages=['roughcut'], execution='script', input='source-cues', output='reviewed-cuts', version='1', dependency='ffmpeg'),
     dict(id='whisper-local', name='本地 Whisper', stages=['transcribe'], execution='script', input='video', output='word-cues', version='1', dependency='whisper'),
     dict(id='qwen-cloud', name='千问云端识别', stages=['transcribe'], execution='script', input='video', output='word-cues', version='1', dependency='fredtalk'),
     dict(id='fredtalk-roughcut', name='FredTalk 字幕与粗剪', stages=['roughcut'], execution='agent', input='source-cues', output='reviewed-cuts', version='2.5', dependency='fredtalk', source_revision=FRED_REVISION),

@@ -2,6 +2,10 @@
 
 原型只用Python标准库和浏览器。自动更新另需Git。
 
+真实工作台的服务器及项目存储同样只用Python标准库。自然口播、素材解说和资料插入的本地合成需要FFmpeg/ffprobe；页面“检查依赖”显示实际状态。talking-edit可用既有configure-runtime在包外保存路径，也支持TALKING_EDIT_FFMPEG/TALKING_EDIT_FFPROBE；生成合成用DIRECTOR_FFMPEG/DIRECTOR_FFPROBE或PATH。不修改全局环境。
+
+自动化浏览器验收是可选开发依赖（playwright和Chrome），不作为用户启动要求。纯Python回归无需浏览器。
+
 talking-edit本地媒体需要FFmpeg/ffprobe；本地转写需兼容Python环境、faster-whisper/CTranslate2和模型，按其doctor与prepare-deps说明在包外准备。FredTalk依赖按现有固定版本适配；高级创作需要Agent。暗金/资料讲解Remotion模板源码与锁文件随包，Node依赖另装；自由创意依赖宿主具备对应Remotion创作能力。
 
 narration-footage搜索能力来自Agent/连接器，本包不内置搜索账户或服务；下载与媒体探测按实际来源和许可使用。92k-video-director仅为公开服务的客户端，模型执行在服务方，需要用户自己的访问条件和Key；服务端源码和凭据不在仓库。

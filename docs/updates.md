@@ -2,7 +2,7 @@
 
 ## 用户启动更新
 
-`python scripts/workbench.py check-update`返回JSON；preview和skill入口也会在启动前检查。由Git fetch读取固定官方origin/main，不接受任意网页给出的更新地址。
+`python scripts/workbench.py check-update`返回JSON；open、preview和skill入口也会在启动前检查。api命令连接已启动服务，不在制作中触发更新。由Git fetch读取固定官方origin/main，不接受任意网页给出的更新地址。
 
 - 相同提交：继续当前版本。
 - 官方提交是当前HEAD的后继：尝试Git快进合并，更新VERSION和源码。
@@ -16,6 +16,10 @@
 建议把用户素材/项目和自定义配置放包外，自有扩展可放忽略的user/目录；该目录首版只是保留区，尚非自动加载插件接口。不要手改VERSION来伪装完成升级。标签固定安装可切到对应tag并使用--no-update。
 
 包装器保护自己启动的命令/预览，不跟踪用户绕过包装器启动的所有外部程序。Agent在更新前先结束当前子Skill后台审阅服务、暂停制作任务并保留原单，更新后重新读取Skill；不在未知云任务中途更换版本。
+
+真实open服务持有同一更新会话保护，并用独立home/server.lock避免同一索引启动双服务。工程不放仓库内。新工程元信息schema=1；旧口播/director数据库原位登记，不做批量迁移。未来未知schema拒绝登记，保留原工具入口。
+
+口播/混搭采用的风格版本存工程workbench-style.json；同一风格版本变化后包装/导出会停止，须核对差异并显式采用当前版本。不会在工程里复制整套旧执行器；需旧代码时使用固定tag和--no-update。直接旧CLI可绕过统一保护，不应与工作台同时写同一项目。
 
 ## 版本约定
 

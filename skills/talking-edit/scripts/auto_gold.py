@@ -31,7 +31,7 @@ def dependencies():
     root.mkdir(parents=True,exist_ok=True)
     for name in ('package.json','package-lock.json'):
         destination=root/name
-        if destination.exists():check(destination.read_bytes()==(template/name).read_bytes(),'自动包装依赖版本已变，请先核查旧依赖目录。')
+        if destination.exists():check(destination.read_bytes().replace(b'\r\n',b'\n')==(template/name).read_bytes().replace(b'\r\n',b'\n'),'自动包装依赖版本已变，请先核查旧依赖目录。')
         else:shutil.copyfile(template/name,destination)
     cli=root/'node_modules/@remotion/cli/remotion-cli.js'
     if not cli.is_file():

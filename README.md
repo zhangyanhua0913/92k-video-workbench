@@ -1,12 +1,24 @@
 # 92k 视频创作工作台
 
-**V2 交互原型 · Windows + Agent 源码试用版**
+**V2 本地制作预览版 · Windows + Agent 协作**
 
 当前版本见仓库根目录VERSION，原型页面右上角也会显示发行版本。
 
-口播剪辑、素材解说、AI视频生成、真人混搭四个入口。提供可点击原型及三个相关Skill的源码。
+口播剪辑、素材解说、AI视频生成、真人混搭四个入口，统一登记项目、保存进度并调用随包制作工具。
 
-**V2页面尚未接通制作执行器。** 草稿只在页面内存，刷新重置；素材卡、播放器、报价和交付均为示例。附带Skill可通过Agent及自己的CLI/工具页使用，不能把原型演示当作真实成片功能。
+`open` 启动真实本地工作台；`preview` 保留原静态演示，两者明确分开。口播与生成复用原工具编辑页并嵌入工作台，字幕、预算和任务仍由原工程保存。复杂包装、搜索选段及生成编排需要 Agent；不是独立全自动剪辑软件。云服务须配置自己的 Key，并确认实际预算，未做本轮真实云付费验收。
+
+## 开始真实制作
+
+```sh
+python scripts/workbench.py open
+```
+
+打开命令返回的完整本机 URL。默认端口18737，`--port`可更改；地址中的临时会话不要分享。四入口可创建工程或手动登记旧工程。默认工程目录为用户目录下 `92k-video-projects`，可以创建时指定其他绝对路径。
+
+工程与素材在源码之外；最近项目索引和临时会话默认在 `~/.92k-video-workbench`，可用 `open --home ABS_DIRECTORY` 或 `WORKBENCH_HOME` 更改。同一数据目录只允许一个服务。关闭页面不取消任务；Ctrl+C停止服务并等待已启动的本地步骤，不删除项目。
+
+自然口播导出需要 FFmpeg/ffprobe，有字幕可直接导入 SRT；本地转写另需 Whisper 环境。暗金模板另需 Node/Remotion；复杂风格由 Agent 交付真实片段。素材解说支持本地音频、图片及视频，当前固定1280×720，旁白与镜头总时长须一致。首次依赖配置见[依赖说明](docs/dependencies.md)。
 
 ## 快速预览
 
@@ -26,7 +38,7 @@ python scripts/workbench.py preview
 
 也可直接告诉Agent：
 
-> 读取这个仓库根目录的SKILL.md，先检查更新，再根据我的输入选择制作流程。V2页面按原型使用；真实制作读取对应子Skill并核对依赖。先用本地免费能力，不擅自调用付费服务。
+> 读取这个仓库根目录的SKILL.md，先检查更新，打开真实工作台，根据我的输入选择制作流程。读取对应子Skill并核对依赖，用统一API保存方案和打开审阅。先用本地免费能力，不擅自调用付费服务。
 
 本仓库无需再单独安装三个同名Skill。总入口按需读取内嵌的子包，避免覆盖用户原有的独立Skill。
 
@@ -34,12 +46,12 @@ python scripts/workbench.py preview
 
 | 入口 | 随包能力 | 当前边界 |
 |---|---|---|
-| 口播剪辑 | talking-edit，字幕/剪切/变速/包装/导出 | 需依赖；复杂包装由Agent制作 |
-| 素材解说 | narration-footage，发现/下载登记/来源核验 | 搜索与画面判断由Agent完成；无独立自动搜索选段服务 |
-| AI生成 | 92k-video-director，脚本分镜/接口编排/审阅/合成 | 需用户自己的92k服务Key及实际预算授权 |
-| 真人混搭 | talking-edit + 素材与资料讲解适配 | Agent编排，不承诺全自动 |
+| 口播剪辑 | 字幕/剪切/变速/包装/MP4和SRT | 本地无包装及暗金模板；复杂包装由Agent制作 |
+| 素材解说 | 持久化文案/旁白/镜头/来源、许可记录和本地合成 | 搜索与画面判断由Agent完成；不内置自动搜片服务 |
+| AI生成 | 分镜/人物声音/报价预算/原任务查询/素材采纳/合成 | 需自己的92k服务Key及实际预算授权；本轮仅免费模拟验证 |
+| 真人混搭 | 真人底座＋资料映射、片段替换及包装审阅 | 本地资料片段可直接登记；复杂同屏仍由Agent制作 |
 
-详见[快速开始](docs/quickstart.md)、[依赖与许可](docs/dependencies.md)、[版本与更新](docs/updates.md)、[验证范围](docs/validation.md)、[交互设计](docs/interaction-design.md)。
+详见[快速开始](docs/quickstart.md)、[统一API与Agent接续](docs/workspace-api.md)、[依赖与许可](docs/dependencies.md)、[版本与更新](docs/updates.md)、[验证范围](docs/validation.md)、[交互设计](docs/interaction-design.md)。
 
 ## 更新与本地改动
 

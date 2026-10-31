@@ -5,6 +5,8 @@ description: 按脚本统筹短视频制作，打开本机交互页配置92k积�
 
 # 92k 导演
 
+随92k-video-workbench使用时，根open页面可创建或登记原director工程，同页编辑分镜、配置Key和审阅预算/素材/成片；根api提供prepare/quote/submit/poll/download/render操作。复用本Skill原账本和预算门禁，不继承其他工程授权。统一工作台与本CLI不要同时提交同一工程任务；未知原单只查询。工作台“解除暂停”不能代替director新审阅确认。
+
 你负责创作判断和流程推进；本Skill的脚本负责交互回传、付费边界、原任务和本地合成。以用户提供的拍摄脚本为准。首次只给主题时先起草，不编造商品事实。读取 [制作与命令](references/workflow.md)，任务字段见 [项目格式](references/project-format.md)。
 
 ## 开始与交互
