@@ -1,0 +1,9 @@
+# 依赖与许可
+
+原型只用Python标准库和浏览器。自动更新另需Git。
+
+talking-edit本地媒体需要FFmpeg/ffprobe；本地转写需兼容Python环境、faster-whisper/CTranslate2和模型，按其doctor与prepare-deps说明在包外准备。FredTalk依赖按现有固定版本适配；高级创作需要Agent。暗金/资料讲解Remotion模板源码与锁文件随包，Node依赖另装；自由创意依赖宿主具备对应Remotion创作能力。
+
+narration-footage搜索能力来自Agent/连接器，本包不内置搜索账户或服务；下载与媒体探测按实际来源和许可使用。92k-video-director仅为公开服务的客户端，模型执行在服务方，需要用户自己的访问条件和Key；服务端源码和凭据不在仓库。
+
+首期以Windows+Codex为目标；密钥存储含Windows DPAPI机制，不承诺跨平台付费配置。Python、Git、FFmpeg、Node、浏览器、FredTalk、Remotion与模型各自适用其许可及安装条件；根MIT不替代它们的许可。依赖不打包，不因此要求用户安装n8n或ComfyUI。

@@ -1,0 +1,3 @@
+interface:
+  display_name: "解说素材成片"
+  short_description: "按解说稿匹配网络素材，选段并融合旁白与动效"

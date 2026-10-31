@@ -1,0 +1,17 @@
+{
+  "talking-edit": {
+    "version": "0.2.0+workbench-snapshot",
+    "source": "https://github.com/zhangyanhua0913/talking-edit",
+    "upstream_baseline": "d4045b7c9750633074730a47f1612c362ab1968d",
+    "note": "Reviewed local snapshot with bundled sibling support; not identical to baseline"
+  },
+  "92k-video-director": {
+    "version": "0.1.0+workbench-snapshot",
+    "source": "https://github.com/zhangyanhua0913/92k-video-director"
+  },
+  "narration-footage": {
+    "version": "0.1.0+workbench-snapshot",
+    "source": "authored video tooling source",
+    "adapter_sha256": "90e0be61d657b9bdd4a67cc81edfe3e5619352566079fe6925c043aeff3f53b5"
+  }
+}

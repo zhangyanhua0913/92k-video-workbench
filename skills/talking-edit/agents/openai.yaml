@@ -1,0 +1,4 @@
+interface:
+  display_name: "口播剪辑工作台"
+  short_description: "剪辑真人口播视频，在本地页面选择技能、校正字幕、确认剪切及审看动态包装"
+  default_prompt: "使用 $talking-edit 剪辑我的口播视频，先打开本地页面导入素材并选择流程。"

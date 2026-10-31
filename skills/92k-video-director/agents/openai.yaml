@@ -1,0 +1,4 @@
+interface:
+  display_name: "92k 导演"
+  short_description: "按脚本制作口播与素材短视频，页面确认分镜、预算和素材后由Agent继续"
+  default_prompt: "使用 $92k-video-director，根据我的脚本制作短视频，先打开分镜页面让我确认。"

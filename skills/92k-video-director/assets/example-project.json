@@ -1,0 +1,10 @@
+{
+  "title": "三镜成片示例",
+  "format": "9:16",
+  "script": "开场讲述，场景展示，字幕收尾。请让Agent按实际素材补充分镜。",
+  "shots": [
+    {"id":"opening","method":"local_video","visual":"人物讲述开场","line":"","duration":5.0,"audio_mode":"source","source":""},
+    {"id":"scene","method":"local_video","visual":"场景或商品动作","line":"","duration":5.0,"audio_mode":"mute","source":""},
+    {"id":"ending","method":"local_image","visual":"图片与字幕收尾","line":"故事，继续发生。","duration":5.0,"audio_mode":"mute","source":"","transition":"fade"}
+  ]
+}
