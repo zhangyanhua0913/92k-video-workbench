@@ -41,6 +41,26 @@ class LiveTests(unittest.TestCase):
         self.assertEqual(again.list()[0]['id'], self.pid)
         self.assertEqual(s['workflow']['roughcut'], 'local-cuts')
 
+    def test_explicit_defaults_persist_apply_only_to_new_matching_projects(self):
+        before = self.ws.call(self.pid, 'show')['project']
+        d = self.ws.defaults('talk')
+        saved = self.ws.defaults('talk', {'speed': 1.35, 'transcribe_language': 'zh', 'subtitle_burn': False}, d['revision'])
+        again = Workspace(self.ws.home)
+        self.assertEqual(again.defaults('talk'), saved)
+        self.assertEqual(again.call(self.pid, 'show')['project'], before)
+        new = again.create('talk', 'saved defaults', str(self.root/'projects'))
+        state = again.call(new['id'], 'show')['project']
+        self.assertEqual(state['speed'], 1.35)
+        self.assertEqual(state['transcribe_language'], 'zh')
+        self.assertFalse(state['subtitle_burn'])
+        self.assertEqual(again.call(new['id'], 'show')['reviews'], [])
+        self.assertEqual(again.defaults('hybrid')['values']['speed'], 1)
+        with self.assertRaises(WorkspaceError): again.defaults('talk', {'speed': 1.5}, 0)
+        for patch in ({'speed': True}, {'speed': 1.36}, {'music': 'private.mp3'}, {'packaging': 'unknown'}, {'subtitle_burn': 1}):
+            with self.assertRaises(WorkspaceError): again.defaults('talk', patch, saved['revision'])
+        again.defaults('talk', {'speed': 1}, saved['revision'])
+        self.assertEqual(again.call(new['id'], 'show')['project']['speed'], 1.35)
+
     def test_register_is_nonmutating_and_index_rebuild(self):
         root = Path(self.entry['root'])
         before = {str(p.relative_to(root)): hashlib.sha256(p.read_bytes()).hexdigest() for p in root.rglob('*') if p.is_file()}

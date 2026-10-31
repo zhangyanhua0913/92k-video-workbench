@@ -166,7 +166,7 @@ def speed_advice(state):
     # Product heuristic, not a claim about a universal ideal speaking rate.
     target=5.5
     desired=max(1,min(1.25,target/max(rate,.01)))
-    options=[1,1.1,1.15,1.2,1.25,1.3,1.5]
+    options=[1,1.1,1.15,1.2,1.25,1.3,1.35,1.5]
     suggested=min(options[:-1],key=lambda v:abs(v-desired))
     return {'available':True,'suggested':suggested,'characters':characters,'retained_seconds':round(duration,3),
         'characters_per_minute':round(rate*60),'caption_gap_ratio':round(max(0,1-coverage/max(duration,.01)),3),

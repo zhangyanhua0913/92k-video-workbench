@@ -82,6 +82,26 @@ class Workspace:
             db.executescript('''CREATE TABLE IF NOT EXISTS projects(id TEXT PRIMARY KEY, root TEXT UNIQUE, mode TEXT, created REAL);
               CREATE TABLE IF NOT EXISTS jobs(id TEXT PRIMARY KEY, project_id TEXT, action TEXT, status TEXT, result TEXT, created REAL, owner TEXT);
               CREATE UNIQUE INDEX IF NOT EXISTS active_job ON jobs(project_id) WHERE status='running';''')
+            db.execute('CREATE TABLE IF NOT EXISTS user_defaults(mode TEXT PRIMARY KEY, revision INTEGER, data TEXT)')
+
+    def defaults(self, mode, patch=None, revision=None):
+        """Explicit local new-project defaults, never approvals or existing-project edits."""
+        check(mode in ('talk', 'hybrid'), '该入口暂无常用制作设置。')
+        factory = {'speed': 1, 'subtitle_burn': True, 'transcribe_language': 'auto', 'packaging': 'none'}
+        with self.db() as db:
+            row = db.execute('SELECT revision,data FROM user_defaults WHERE mode=?', (mode,)).fetchone()
+            rev, values = (row['revision'], json.loads(row['data'])) if row else (0, factory)
+            if patch is not None:
+                check(type(revision) is int and revision == rev, '另一页面已修改常用设置，请重新打开配置中心。', 409)
+                check(isinstance(patch, dict) and set(patch) <= set(factory), '未知常用设置字段。')
+                values = {**values, **patch}
+                check(type(values['speed']) in (int, float) and values['speed'] in (1, 1.1, 1.15, 1.2, 1.25, 1.3, 1.35, 1.5), '不支持的速度。')
+                check(type(values['subtitle_burn']) is bool, '字幕设置无效。')
+                check(values['transcribe_language'] in ('auto', 'zh', 'en', 'ja', 'ko'), '转写语言无效。')
+                check(values['packaging'] in ('none', 'fredtalk-motion', 'remotion-gold', 'remotion-plugin', 'remotion-evidence', 'narration-footage-v0-1'), '风格无效。')
+                rev += 1
+                db.execute('INSERT OR REPLACE INTO user_defaults VALUES(?,?,?)', (mode, rev, json.dumps(values)))
+            return {'mode': mode, 'revision': rev, 'values': values}
 
     @contextlib.contextmanager
     def db(self):
@@ -154,6 +174,14 @@ class Workspace:
         parent = self.safe_root(parent or str(self.default_root))
         root = parent / ('project-' + uuid.uuid4().hex[:12])
         state = invoke(mode, root, 'create', {'title': title.strip()})
+        if mode in ('talk', 'hybrid'):
+            defaults = self.defaults(mode)
+            if defaults['revision']:
+                values = defaults['values']
+                state = invoke(mode, root, 'update', {'revision': state['revision'], 'patch': {
+                    'speed': values['speed'], 'subtitle_burn': values['subtitle_burn'],
+                    'transcribe_language': values['transcribe_language'],
+                    'workflow': {**state['workflow'], 'packaging': values['packaging']}}})
         description = {'schema': 1, 'project_id': state['project_id'], 'mode': mode, 'engine_root': '.',
                        'package_version': (ROOT / 'VERSION').read_text().strip()}
         (root / 'workbench-project.json').write_text(json.dumps(description, ensure_ascii=False, indent=2), encoding='utf-8')
@@ -346,6 +374,7 @@ class Handler(BaseHTTPRequestHandler):
             match = re.fullmatch(r'/tool/([a-f0-9-]+)/(.+)?', path)
             if match: return self.proxy(match[1], '/' + (match[2] or ''), write)
             if not write:
+                if path == '/api/defaults': return self.reply(ws.defaults(parse_qs(urlsplit(self.path).query).get('mode', ['talk'])[0]))
                 if path == '/api/projects': return self.reply({'projects': ws.list(), 'default_root': str(ws.default_root), 'version': (ROOT / 'VERSION').read_text().strip()})
                 if path == '/api/project': return self.reply(ws.snapshot(parse_qs(urlsplit(self.path).query).get('id', [''])[0]))
                 if path == '/media': return self.media()
@@ -356,6 +385,7 @@ class Handler(BaseHTTPRequestHandler):
             if path == '/api/create': return self.reply(ws.create(data['mode'], data['title'], data.get('parent')))
             if path == '/api/register': return self.reply(ws.register(data['root'], data.get('mode')))
             if path == '/api/preferences': return self.reply(ws.preferences(data['id'], data['patch'], data['revision']))
+            if path == '/api/defaults': return self.reply(ws.defaults(data['mode'], data['patch'], data['revision']))
             if path == '/api/action':
                 return self.reply(ws.call(data['id'], data['action'], data.get('data'), data['action'] in LONG))
             if path == '/api/tool':

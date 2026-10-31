@@ -32,3 +32,5 @@ description: 打开92k视频工作台，统一管理本地工程，按口播剪�
 先doctor/核对依赖，缺依赖说明用途并在包外准备。项目、素材、Key和运行数据放仓库外；不复制作者路径、凭据或历史预算。使用者自行提供有权使用的素材与服务Key，付费遵循子Skill当前报价和明确授权，未知原单只查不重提。直接调用旧CLI会绕过统一执行记录/风格锁；不要与工作台同时操作同一工程。
 
 普通用户只拉取更新，不启用 `install_author_watch.py` 或 `publish.py --enable-author`。自定义内容优先放Git忽略的user/目录或包外；若改了核心源码，更新冲突时保留修改并请用户决定合并。阅读[版本与更新](docs/updates.md)了解限制。
+
+常用参数：GET /api/defaults?mode=talk|hybrid 读取本机新项目默认；POST同地址用mode/revision/patch显式保存speed、subtitle_burn、transcribe_language、packaging。只影响后续创建的对应类型项目，不自动改旧工程、执行或批准任务。用户当前要求变速时另走项目update及原审阅/合成；可以只保存用户明确指定的默认字段，不能擅自把临时参数学成习惯。配置中心可保存、记住当前参数和恢复原始默认，六步不变。

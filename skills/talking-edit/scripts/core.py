@@ -90,7 +90,7 @@ def validate(s):
     clean(s)
     check(isinstance(s.get('title'), str) and len(s['title']) <= 300, '项目标题无效。')
     check(s.get('transcribe_language', 'auto') in ('auto','zh','en','ja','ko'), '不支持的本地转写语言。')
-    check(finite(s['speed']) and s['speed'] in (1, 1.1, 1.15, 1.2, 1.25, 1.3, 1.5), '不支持的速度。')
+    check(finite(s['speed']) and s['speed'] in (1, 1.1, 1.15, 1.2, 1.25, 1.3, 1.35, 1.5), '不支持的速度。')
     check(set(s['workflow']) == {'transcribe', 'roughcut', 'packaging', 'render'}, '流程步骤无效。')
     check(all(isinstance(x, str) for x in s['workflow'].values()), 'Skill 标识无效。')
     from registry import validate_selection

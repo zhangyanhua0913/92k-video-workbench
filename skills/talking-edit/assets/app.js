@@ -23,7 +23,7 @@ function speedPanel(latest){
 const box=card('语速与节奏 · 自动建议 / 自己选择');box.id='speed-panel';
 const info=el('p','正在按保留字幕和时长分析…'),select=el('select'),estimate=el('p'),player=latest?video(latest.result.file):null;
 select.id='speed-choice';select.setAttribute('aria-label','导出语速');
-for(const value of [1,1.1,1.15,1.2,1.25,1.3,1.5]){const option=el('option',value===1?'1.0× 原速':value+'×');option.value=value;select.append(option);}select.value=local().speed;
+for(const value of [1,1.1,1.15,1.2,1.25,1.3,1.35,1.5]){const option=el('option',value===1?'1.0× 原速':value+'×');option.value=value;select.append(option);}select.value=local().speed;
 let advice=null;
 function describe(){if(!advice?.available)return;const seconds=advice.retained_seconds/Number(select.value);estimate.textContent=`原速约 ${Math.floor(advice.retained_seconds/60)}分${Math.round(advice.retained_seconds%60)}秒 → ${select.value}倍约 ${Math.floor(seconds/60)}分${Math.round(seconds%60)}秒；当前项目 ${snapshot.project.speed}倍。`;}
 select.onchange=()=>{draft().speed=Number(select.value);$('#dirty').textContent='有未保存语速选择';describe();};
@@ -61,7 +61,7 @@ if(s.source)c.append(video(s.source.file));if(s.script)c.append(card('参考文�
 const box=card('一次添加多个口播视频');box.append(el('p','每个视频创建独立项目。默认每次只运行一个本地任务；Agent 制作方案和逐条审看仍需要继续处理。','muted'));
 const title=input('口播批次',()=>{}),style=el('select'),speed=el('select'),files=el('input'),auto=input(false,()=>{},'checkbox');files.type='file';files.multiple=true;files.accept='.mp4,.mov,.webm,.mkv';
 for(const x of snapshot.skills.filter(styleVisible)){const o=el('option',x.name+(x.ready?'':' · '+x.reasons.join(' / ')));o.value=x.id;o.disabled=!x.ready;style.append(o);}style.value=s.workflow.packaging;
-for(const v of [1,1.1,1.15,1.2,1.25,1.3,1.5]){const o=el('option',v+'×');o.value=v;speed.append(o);}speed.value=s.speed;
+for(const v of [1,1.1,1.15,1.2,1.25,1.3,1.35,1.5]){const o=el('option',v+'×');o.value=v;speed.append(o);}speed.value=s.speed;
 for(const [name,control] of [['批次名称',title],['统一包装风格',style],['统一语速',speed],['选择多个视频',files]]){const l=el('label',name);l.append(control);box.append(l);}
 const autoLabel=el('label',undefined,'auto-mode');autoLabel.append(auto,el('span','全自动（支持本地转写、无包装或暗金模板包装、串行合成）'));box.append(autoLabel);box.append(el('p','暗金自动模式按字幕生成标题动画，效果与自由创作不同；FredTalk及自由创意包装仍需Agent制作。保留原内容，不自动删口误和停顿，付费任务不在自动范围内。','muted'));box.append(button('创建批次并导入',async()=>{const selected=[...files.files];if(!selected.length)throw Error('请先选择至少一个视频。');const b=await api('batch-create',{title:title.value,packaging:style.value,speed:Number(speed.value),mode:auto.checked?'auto':'manual'});let ok=0;for(const f of selected){try{message(`正在导入 ${ok+1}/${selected.length}：${f.name}`);const r=await fetch('/api/batch-upload',{method:'POST',headers:{'X-Talking-Session':session||'','X-File-Name':encodeURIComponent(f.name),'X-Batch-Id':b.id},body:f});const j=await r.json();if(!r.ok)throw Error(j.message);if(auto.checked)await api('batch-enqueue',{item_id:j.id,step:'auto'});ok++;}catch(e){message(`${f.name} 导入失败：${e.message}；其他视频继续。`);}}if(auto.checked&&ok)await api('batch-start',{});message(`批次已创建，成功导入 ${ok}/${selected.length} 个视频。`);render();},'primary'));c.append(box);
 api('batches').then(({batches})=>{if(tab!=='batch')return;for(const b of batches){const group=card(`${b.title} · ${b.items.length} 个视频`);group.append(el('p',`统一风格：${b.packaging} · ${b.speed}倍 · ${b.mode==='auto'?'全自动本地模板':'手动确认'}。项目可以分别调整，失败不会阻止其他项目。`,'muted'));

@@ -67,3 +67,7 @@ hybrid的attach-source输入file绝对路径、start/end真人源时间、source
 状态：待配置/可执行/执行中/等待Agent/待审阅/失败/待核查/已暂停/完成。技术完成与最终认可分别记录；历史输出保留原版本。工作台关闭不等于取消上游任务，不自动退款。
 
 现有独立CLI和工具页保留；批量入口及嵌套生成仍可通过原工具使用，本轮统一页单工程执行，禁止混用两个执行入口同时写同一工程。
+
+## 本机常用参数
+
+GET /api/defaults?mode=talk|hybrid 返回mode、revision、values；POST /api/defaults接收mode/revision/patch，沿用会话及Origin校验。patch白名单：speed（1/1.1/1.15/1.2/1.25/1.3/1.35/1.5）、subtitle_burn布尔、transcribe_language（auto/zh/en/ja/ko）、packaging（该入口原六种口播风格ID）。冲突409须重读，不覆盖。参数在本机home/workspace.sqlite3的user_defaults表，每类型一条，仅用于新建工程；登记和读取旧工程不应用默认。无个人媒体/任务/字幕副本、预算或授权。原始默认speed=1/subtitle_burn=true/language=auto/packaging=none；恢复通过显式保存这组值，不影响已有工程。

@@ -36,3 +36,8 @@
 - Root Agent Skill and launcher with fast-forward update checks and local-change protection.
 - Opt-in Windows author file-event publication with version bump and remote verification.
 - Source-only distribution; no parent-project services, private runtime or research media.
+
+## 常用设置与1.35倍速
+
+- 原字幕与粗剪增加1.35倍速，字幕/音画时间映射及真实合成沿用现有执行器。
+- 现有配置中心新增显式保存常用参数、记住当前项目和恢复默认；口播/混搭各自保存，重启保留，仅作用于新项目。原四入口六步不变。
