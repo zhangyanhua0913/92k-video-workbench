@@ -9,7 +9,7 @@ import subprocess
 import sys
 import tempfile
 from xml.sax.saxutils import escape
-from publish import ROOT
+from publish import ROOT, author_config
 from versioning import REMOTE, state_dir
 
 TASK='92k-VideoWorkbench-AutoPublish'
@@ -24,13 +24,14 @@ def main():
     if args.uninstall:
         subprocess.run(['schtasks','/End','/TN',TASK],capture_output=True)
         subprocess.run(['schtasks','/Delete','/TN',TASK,'/F'],check=True,capture_output=True)
-        (state/'author.json').unlink(missing_ok=True)
+        author_config(ROOT).unlink(missing_ok=True)
         print(json.dumps({'status':'disabled'})); return
     identity=subprocess.run(['whoami','/user','/fo','csv','/nh'],capture_output=True,text=True,check=True)
     sid=list(csv.reader(io.StringIO(identity.stdout.strip())))[0][1]
     pythonw=Path(sys.executable).with_name('pythonw.exe')
     if not pythonw.exists(): raise SystemExit('pythonw.exe is required for hidden author watcher')
-    (state/'author.json').write_text(json.dumps({'root':str(ROOT.resolve()),'remote':REMOTE,'enabled':True}),encoding='utf-8')
+    config=author_config(ROOT);config.parent.mkdir(parents=True,exist_ok=True)
+    config.write_text(json.dumps({'root':str(ROOT.resolve()),'remote':REMOTE,'enabled':True}),encoding='utf-8')
     xml=f'''<?xml version="1.0" encoding="UTF-16"?>
 <Task version="1.2" xmlns="http://schemas.microsoft.com/windows/2004/02/mit/task">
 <Triggers><LogonTrigger><Enabled>true</Enabled><UserId>{escape(sid)}</UserId></LogonTrigger></Triggers>

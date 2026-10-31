@@ -14,6 +14,12 @@ BLOCK_PARTS = {'private','runtime','projects','exports','media','node_modules','
 VERSION = re.compile(r'^0\.1\.0-prototype\.(\d+)$')
 
 
+def author_config(root):
+    # Local Git metadata is not cloned or committed, and works across logon contexts.
+    path=Path(git(root,'rev-parse','--git-path','info/92k-author.json').stdout.strip())
+    return path if path.is_absolute() else Path(root)/path
+
+
 def scan(root, staged=False):
     flags=['--cached'] if staged else ['--cached','--others','--exclude-standard']
     files = git(root, 'ls-files', *flags, '-z').stdout.split('\0')
@@ -75,9 +81,12 @@ def next_version(current, previous):
 
 def publish(root=ROOT, message='Update workbench source', bump=True):
     root = Path(root).resolve()
-    config = state_dir(root)/'author.json'
-    if not config.exists() or json.loads(config.read_text()) != {'root':str(root),'remote':REMOTE,'enabled':True}:
-        return {'status':'disabled', 'root':str(root),'config':str(config),'hint':'Author auto-publish is opt-in on this machine only'}
+    config = author_config(root)
+    settings=json.loads(config.read_text(encoding='utf-8')) if config.exists() else {}
+    if settings != {'root':str(root),'remote':REMOTE,'enabled':True}:
+        return {'status':'disabled', 'root':str(root),'config':str(config),'config_exists':config.exists(),
+                'root_matches':settings.get('root')==str(root),'remote_matches':settings.get('remote')==REMOTE,
+                'enabled':settings.get('enabled') is True,'hint':'Author auto-publish is opt-in on this machine only'}
     with gate(root):
         if git(root,'remote','get-url','origin').stdout.strip() != REMOTE: raise ValueError('Unexpected remote')
         if git(root,'branch','--show-current').stdout.strip() != 'main': raise ValueError('Author publishing requires main')
@@ -111,7 +120,8 @@ def main():
     args=parser.parse_args()
     if args.enable_author:
         config={'root':str(ROOT.resolve()),'remote':REMOTE,'enabled':True}
-        (state_dir(ROOT)/'author.json').write_text(json.dumps(config),encoding='utf-8')
+        destination=author_config(ROOT);destination.parent.mkdir(parents=True,exist_ok=True)
+        destination.write_text(json.dumps(config),encoding='utf-8')
         result={'status':'enabled','root':str(ROOT)}
     elif args.scan:
         blocked=scan(ROOT); result={'status':'blocked' if blocked else 'scan_passed','files':blocked}

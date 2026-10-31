@@ -29,8 +29,10 @@ python scripts/install_author_watch.py
 
 这是显式启用的Windows作者维护功能。注册当前用户登录任务92k-VideoWorkbench-AutoPublish，隐藏运行pythonw；仅监听当前仓库文件事件，连续30秒无修改后合并发布。登录启动对账一次；无周期目录扫描。不会为其他安装者默认启用。
 
-每次发布：检查源码白名单和可能凭据→增加VERSION→普通Git提交→push main→远端提交核对。配置、锁和日志位于用户LOCALAPPDATA/92k-video-workbench下，按仓库路径隔离，不进入Git。没有源码变化就不增加版本；网络失败保留本地提交，在下一次文件变动或登录时重试，不强推。
+每次发布：检查源码白名单和可能凭据→增加VERSION→普通Git提交→push main→远端提交核对。作者启用配置保存在本机Git元数据info/92k-author.json，不被克隆或提交；锁和日志位于用户LOCALAPPDATA/92k-video-workbench下，按仓库路径隔离。没有源码变化就不增加版本；网络失败保留本地提交，在下一次文件变动或登录时重试，不强推。
 
 只接受该官方origin和main。新路径超出白名单、疑似凭据、分支不符或推送失败会停止，日志记录原因，不能把失败当作已上传。扫描是防误传的辅助，作者仍需确保新代码/文本可公开；通用规则无法识别所有私密业务信息。
 
 暂停/卸载：`python scripts/install_author_watch.py --uninstall`。手动发布：`python scripts/publish.py --message "具体修改说明"`。规则代码位于scripts/publish.py；新增合法文件类型时先审查再调整白名单。
+
+监听器每批事件都以独立子进程读取当前发布脚本，避免长期后台进程沿用旧版发布规则。

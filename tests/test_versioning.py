@@ -88,7 +88,7 @@ class GitUpdates(unittest.TestCase):
         self.assertEqual(publisher.publish(self.user)['status'],'disabled')
         previous=publisher.REMOTE;publisher.REMOTE=str(self.remote)
         try:
-            (state_dir(self.user)/'author.json').write_text(json.dumps({'root':str(self.user.resolve()),'remote':str(self.remote),'enabled':True}))
+            publisher.author_config(self.user).write_text(json.dumps({'root':str(self.user.resolve()),'remote':str(self.remote),'enabled':True}))
             self.write(self.user,'README.md','author update\n')
             result=publisher.publish(self.user,'fixture release')
             self.assertEqual(result['status'],'published');self.assertEqual(result['version'],'0.1.0-prototype.2')
