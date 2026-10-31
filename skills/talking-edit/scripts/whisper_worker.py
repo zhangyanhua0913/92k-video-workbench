@@ -9,7 +9,8 @@ model=WhisperModel(sys.argv[1],device='cpu',compute_type='int8',local_files_only
 with wave.open(sys.argv[2],'rb') as wav:
     assert (wav.getframerate(),wav.getnchannels(),wav.getsampwidth())==(16000,1,2)
     audio=np.frombuffer(wav.readframes(wav.getnframes()),dtype='<i2').astype(np.float32)/32768
-segments,info=model.transcribe(audio,word_timestamps=True,vad_filter=False,beam_size=5)
+language=sys.argv[4] if len(sys.argv)>4 else 'auto'
+segments,info=model.transcribe(audio,word_timestamps=True,vad_filter=True,beam_size=5,language=None if language=='auto' else language)
 rows=[]
 for i,s in enumerate(segments):
     rows.append(dict(id='cue-'+str(i+1),start=s.start,end=s.end,text=s.text.strip(),

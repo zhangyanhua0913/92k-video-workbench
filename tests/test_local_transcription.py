@@ -22,8 +22,11 @@ class LocalSpeechTests(unittest.TestCase):
             try:
                 entry=ws.create('talk','Offline speech acceptance',str(root/'projects'));pid=entry['id']
                 ws.call(pid,'import',{'file':str(video),'kind':'video'})
+                state=ws.call(pid,'show')['project']
+                ws.call(pid,'update',{'patch':{'transcribe_language':'en'},'revision':state['revision']})
                 result=ws.call(pid,'transcribe')
                 self.assertTrue(result['cues']);self.assertFalse(result['listeningReviewed'])
+                self.assertEqual(result['language'],'en')
                 state=ws.call(pid,'show')['project'];cues=state['cues'];cues[0]['text']='Edited synthetic subtitle'
                 ws.call(pid,'update',{'patch':{'cues':cues},'revision':state['revision']})
                 request=ws.call(pid,'review',{'stage':'roughcut'})

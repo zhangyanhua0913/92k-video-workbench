@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.1.0-prototype.8
+
+- Fix authenticated playback of talking-head media through the workspace: bind the current child's media cookie internally while keeping parent authentication and Range requests.
+- Follow project hash navigation without requiring a manual reload; save current edits before switching.
+- Add per-project local transcription language (auto/zh/en/ja/ko) and offline VAD to avoid detecting the language from a silent camera-preparation section. Invalid timings remain rejected and failed attempts are preserved.
+- Hide animation keyframe review in the no-animation preview flow; keep all original six workflow steps.
+
 ## 0.1.0-prototype.7
 
 - Match the original import-step hierarchy: video selection precedes optional project text, keeping the first action visible immediately.

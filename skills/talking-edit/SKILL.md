@@ -7,6 +7,8 @@ description: 剪辑已录好的真人口播视频，打开本地页面选择各�
 
 随92k-video-workbench使用时，优先通过根workbench.py open/api进入统一工程与审阅，见根docs/workspace-api.md；本CLI保留独立兼容。新统一工程默认local-cuts＋none，可导入SRT并本地导出，不要求FredTalk。统一页单工程操作，原批量功能仍用独立工具，不与统一页同时执行。风格升级需显式核对采用。
 
+本地识别使用VAD避开长无声准备段；已知语言时可用update设置transcribe_language（auto/zh/en/ja/ko），中文口播可明确zh。不能把自动识别结果当已校对字幕；错语言、重叠/倒序时码须保留原输出和失败任务，修正本地参数后显式重试，不转云或自动收费。视频显示方向以旋转矩阵后的实际画幅为准，不能只看编码宽高。
+
 以本 Skill 的 `scripts/cli.py` 为唯一执行入口，命令返回 JSON。先运行 doctor，缺媒体程序时用 configure-runtime 保存用户本机 FFmpeg/ffprobe 路径；不改全局环境。业务项目和生成媒体放安装目录外，默认建议用户目录的 TalkingEditProjects，不扫描无关磁盘。
 
 新用户安装与依赖准备见 [首次使用](references/quickstart.md)。内置暗金和资料讲解模板随包提供；自由创意包装才需另装 Remotion 插件。首次下载环境、模型、FredTalk及浏览器时说明用途和位置。

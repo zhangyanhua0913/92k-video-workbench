@@ -175,6 +175,18 @@ class LiveTests(unittest.TestCase):
         narration = self.root / 'narration.wav'
         subprocess.run([ff, '-v', 'error', '-y', '-f', 'lavfi', '-i', 'sine=frequency=500:duration=3', str(narration)], check=True)
         self.ws.call(self.pid, 'import', {'file': str(video), 'kind': 'video'})
+        # Actual native video URLs need the child's media cookie behind the parent proxy.
+        server=Server(self.ws);thread=threading.Thread(target=server.serve_forever,daemon=True);thread.start()
+        try:
+            source=self.ws.call(self.pid,'show')['project']['source']['file']
+            url=server.origin+'/tool/'+self.pid+'/media?file='+source
+            req=Request(url,headers={'X-Workbench-Session':server.token,'Range':'bytes=0-1023'})
+            with build_opener(ProxyHandler({})).open(req) as response:
+                self.assertEqual(response.status,206);self.assertEqual(len(response.read()),1024)
+                self.assertTrue(response.headers['Content-Type'].startswith('video/mp4'))
+            with self.assertRaises(HTTPError) as error:build_opener(ProxyHandler({})).open(Request(url))
+            self.assertEqual(error.exception.code,401);error.exception.close()
+        finally:server.shutdown();server.server_close();thread.join()
         s = self.ws.call(self.pid, 'show')['project']
         self.ws.call(self.pid, 'update', {'patch': {'cues': [{'id': 'line', 'start': 0, 'end': 3, 'text': 'Synthetic acceptance'}]}, 'revision': s['revision']})
         def confirm(pid, stage):

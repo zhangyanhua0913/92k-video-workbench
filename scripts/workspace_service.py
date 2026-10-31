@@ -426,6 +426,10 @@ class Handler(BaseHTTPRequestHandler):
         target = descriptor['origin'] + path + ('?' + urlsplit(self.path).query if urlsplit(self.path).query else '')
         header = 'X-Director-Session' if row['mode'] == 'generate' else 'X-Talking-Session'
         headers = {header: descriptor['session'], 'Origin': descriptor['origin']}
+        if row['mode'] in ('talk', 'hybrid') and path == '/media':
+            # Talking media intentionally requires its own cookie, not an API header.
+            # Bind only this authenticated project's ephemeral child cookie internally.
+            headers['Cookie'] = 'talking_' + pid + '=' + descriptor['session']
         for key in ('Content-Type', 'Range', 'X-Filename', 'X-File-Name', 'X-File-Kind', 'X-Project-Revision', 'X-Director-Request'):
             if self.headers.get(key): headers[key] = self.headers[key]
         upload = write and path == '/api/import'

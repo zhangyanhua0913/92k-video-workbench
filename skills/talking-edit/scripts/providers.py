@@ -51,7 +51,8 @@ def cloud_quote(project, state=None):
 def transcribe(project):
     s=project.state(); selected=s['workflow']['transcribe']
     audio=extract_audio(project)
-    fingerprint=digest({'source':s['source'],'skill':selected,'model':MODEL if selected=='qwen-cloud' else 'small-cpu-int8-v1'})
+    language=s.get('transcribe_language','auto')
+    fingerprint=digest({'source':s['source'],'skill':selected,'model':MODEL}) if selected=='qwen-cloud' else digest({'source':s['source'],'skill':selected,'model':'small-cpu-int8-v2-vad','language':language})
     if selected=='qwen-cloud':
         return cloud_transcribe(project,s,audio,fingerprint)
     cfg=config();py=Path(cfg.get('whisper_python','missing'));model=Path(cfg.get('whisper_model','missing'))
@@ -60,9 +61,11 @@ def transcribe(project):
     if not fresh:return json.loads(task['result'])
     out=project.root/'work'/('asr-'+task['id']+'.json')
     try:
-        p=subprocess.run([str(py),str(Path(__file__).with_name('whisper_worker.py')),str(model),str(audio),str(out)],capture_output=True)
+        p=subprocess.run([str(py),str(Path(__file__).with_name('whisper_worker.py')),str(model),str(audio),str(out),language],capture_output=True)
         check(p.returncode==0,'本地识别失败，检查隔离环境与模型。','asr_failed')
         result=json.loads(out.read_text(encoding='utf-8'))
+        from core import validate
+        validate({**s,'cues':result['cues']})
         project.finish(task['id'],{'file':out.relative_to(project.root).as_posix(),'cue_count':len(result['cues']),'paid':False})
         project.update({'cues':result['cues']},s['revision'])
         return result

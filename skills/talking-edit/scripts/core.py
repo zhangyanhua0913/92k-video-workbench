@@ -89,6 +89,7 @@ def clean(value):
 def validate(s):
     clean(s)
     check(isinstance(s.get('title'), str) and len(s['title']) <= 300, '项目标题无效。')
+    check(s.get('transcribe_language', 'auto') in ('auto','zh','en','ja','ko'), '不支持的本地转写语言。')
     check(finite(s['speed']) and s['speed'] in (1, 1.1, 1.15, 1.2, 1.25, 1.3, 1.5), '不支持的速度。')
     check(set(s['workflow']) == {'transcribe', 'roughcut', 'packaging', 'render'}, '流程步骤无效。')
     check(all(isinstance(x, str) for x in s['workflow'].values()), 'Skill 标识无效。')
@@ -181,7 +182,7 @@ class Project:
         c.execute('INSERT INTO events(kind,data,created) VALUES(?,?,?)', (kind, dumps(data), time.time()))
 
     def update(self, patch, revision):
-        allowed = {'title', 'script', 'speed', 'workflow', 'cues', 'cuts', 'scenes', 'subtitle_burn','music'}
+        allowed = {'title', 'script', 'speed', 'workflow', 'cues', 'cuts', 'scenes', 'subtitle_burn','music','transcribe_language'}
         check(set(patch) <= allowed, '不能修改受保护的项目字段。')
         with self.db() as c:
             s = self.state(c)
