@@ -47,7 +47,7 @@ def execute(engine, root, action, data):
             return result
         with p.db() as db:
             reviews = [dict(r) for r in db.execute('SELECT * FROM reviews ORDER BY created DESC LIMIT 30')]
-        return {'project': p.state(), 'tasks': p.tasks(), 'reviews': reviews,
+        return {'project': p.state(), 'tasks': p.tasks(), 'reviews': reviews, 'independent_previews': independent_previews(p),
                 'final_confirmed': p.approved('final')}
     if action == 'doctor':
         if engine == 'generate':
@@ -111,6 +111,7 @@ def execute(engine, root, action, data):
         if action == 'import': return p.import_file(data['file'])
     else:
         from media import import_file, analyze, render
+        if action == 'register-preview': return register_preview(p, data)
         if action == 'import': return import_file(p, data['file'], data['kind'], data.get('revision'))
         if action == 'recover': return p.recover(data.get('resume', False))
         if action == 'retry-local': return p.retry_local(data['task'])
@@ -130,6 +131,49 @@ def execute(engine, root, action, data):
         if action == 'attach-source':
             return attach_source(p, data)
     raise ValueError('不支持的执行操作。')
+
+
+def independent_previews(p):
+    from core import file_hash
+    with p.db() as db:
+        exists = db.execute("SELECT 1 FROM sqlite_master WHERE type='table' AND name='independent_previews'").fetchone()
+        rows = [dict(r) for r in db.execute('SELECT * FROM independent_previews ORDER BY created DESC')] if exists else []
+    for row in rows:
+        try:
+            path = p.public_file(row['file'])
+            row['available'] = path.is_file() and file_hash(path) == row['sha256']
+        except (ValueError, OSError):
+            row['available'] = False
+    return rows
+
+
+def register_preview(p, data):
+    """Register an existing independent composition without creating a render or approval."""
+    from core import check, file_hash
+    import time
+    rel = Path(data['file'])
+    check(not rel.is_absolute() and rel.parts and rel.parts[0] == 'exports' and rel.suffix.lower() == '.mp4', '审看片须在本工程 exports 内。')
+    video = p.public_file(rel.as_posix())
+    check(video.is_relative_to((p.root / 'exports').resolve()), '审看片须在本工程 exports 内。')
+    manifest = video.parent / 'manifest.json'
+    check(manifest.is_file() and manifest.resolve().is_relative_to((p.root / 'exports').resolve()), '缺少本工程制作清单。')
+    m = json.loads(manifest.read_text(encoding='utf-8'))
+    sha = file_hash(video)
+    check(m.get('type') == 'independent-composition-preview' and m.get('project_id') == p.state()['project_id'] and m.get('sha256') == sha and m.get('technicalPass') is True, '清单、工程或文件校验不匹配。')
+    subtitles = video.parent / 'captions.srt'
+    subtitle_rel = subtitles.relative_to(p.root).as_posix() if subtitles.is_file() and subtitles.resolve().is_relative_to((p.root / 'exports').resolve()) else None
+    with p.db() as db:
+        state = p.state(db)
+        check(type(data.get('revision')) is int and data['revision'] == state['revision'] == m.get('base_revision'), '工程版本已改变，不能作为当前审看片登记。', 'stale_revision', 409)
+        check(not db.execute("SELECT 1 FROM tasks WHERE status='running'").fetchone(), '工程任务运行中。', 'busy', 409)
+        db.execute('CREATE TABLE IF NOT EXISTS independent_previews (file TEXT PRIMARY KEY, revision INTEGER NOT NULL, sha256 TEXT NOT NULL, subtitles TEXT, created REAL NOT NULL)')
+        existing = db.execute('SELECT * FROM independent_previews WHERE file=?', (rel.as_posix(),)).fetchone()
+        if existing:
+            check(existing['sha256'] == sha and existing['revision'] == state['revision'], '已有不同登记，保留原记录。', 'conflict', 409)
+        else:
+            db.execute('INSERT INTO independent_previews VALUES(?,?,?,?,?)', (rel.as_posix(), state['revision'], sha, subtitle_rel, time.time()))
+            p.event(db, 'independent_preview_registered', {'file': rel.as_posix(), 'revision': state['revision'], 'sha256': sha})
+    return {'file': rel.as_posix(), 'revision': state['revision'], 'sha256': sha, 'subtitles': subtitle_rel, 'kind': 'independent-preview', 'available': True}
 
 
 def attach_source(p, data):

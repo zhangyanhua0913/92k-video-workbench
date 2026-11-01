@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.1.0-prototype.11
+
+- Register an Agent's independent talking-head composition against its original project and revision, with manifest/hash validation, idempotency and retained history.
+- Show registered previews in the existing review and delivery steps, with playback and subtitles; distinguish them from built-in render tasks and user approval.
+- Reject stale registrations and detect missing or modified files without changing the original six-step flow.
+
 ## 0.1.0-prototype.8
 
 - Fix authenticated playback of talking-head media through the workspace: bind the current child's media cookie internally while keeping parent authentication and Range requests.

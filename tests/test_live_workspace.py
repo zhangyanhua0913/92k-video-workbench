@@ -82,6 +82,34 @@ class LiveTests(unittest.TestCase):
         with self.assertRaises(WorkspaceError): self.ws.call(self.pid, 'update', {'patch': {'script': 'stale'}, 'revision': s['revision']})
         self.assertEqual(self.ws.call(self.pid, 'show')['project']['script'], 'first')
 
+    def test_independent_preview_registration_keeps_review_separate(self):
+        root = Path(self.entry['root'])
+        state = self.ws.call(self.pid, 'show')['project']
+        folder = root/'exports'/'independent'; folder.mkdir()
+        video = folder/'film.mp4'; video.write_bytes(b'preview test bytes')
+        (folder/'captions.srt').write_text('example', encoding='utf-8')
+        manifest = {'type':'independent-composition-preview', 'project_id':self.pid,
+                    'base_revision':state['revision'], 'sha256':hashlib.sha256(video.read_bytes()).hexdigest(), 'technicalPass':True}
+        (folder/'manifest.json').write_text(json.dumps(manifest), encoding='utf-8')
+        data = {'file':'exports/independent/film.mp4', 'revision':state['revision']}
+        self.ws.call(self.pid, 'register-preview', data)
+        self.ws.call(self.pid, 'register-preview', data)
+        snap = self.ws.snapshot(self.pid)
+        self.assertEqual(snap['status'], '待审阅')
+        self.assertEqual(len(snap['independent_previews']), 1)
+        self.assertEqual(snap['outputs'], [])
+        self.assertFalse(snap['state']['final_confirmed'])
+        self.assertEqual(snap['state']['reviews'], [])
+        self.assertTrue(Workspace(self.ws.home).snapshot(self.pid)['independent_previews'][0]['available'])
+        video.write_bytes(b'changed')
+        self.assertFalse(self.ws.snapshot(self.pid)['independent_previews'][0]['available'])
+        with self.assertRaises(WorkspaceError): self.ws.call(self.pid, 'register-preview', data)
+        with self.assertRaises(WorkspaceError): self.ws.call(self.pid, 'register-preview', {'file':'../film.mp4','revision':state['revision']})
+        video.write_bytes(b'preview test bytes')
+        self.ws.call(self.pid, 'update', {'patch':{'script':'changed'},'revision':state['revision']})
+        with self.assertRaises(WorkspaceError): self.ws.call(self.pid, 'register-preview', data)
+        self.assertEqual(self.ws.snapshot(self.pid)['independent_previews'][0]['revision'], state['revision'])
+
     def test_ui_preferences_do_not_approve_or_change_engine(self):
         original=self.ws.call(self.pid,'show')['project']
         prefs=self.ws.preferences(self.pid)

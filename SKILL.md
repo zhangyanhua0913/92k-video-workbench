@@ -15,6 +15,8 @@ description: 打开92k视频工作台，统一管理本地工程，按口播剪�
 
 统一操作优先使用 `python scripts/workbench.py api --path /api/... --input ABS_JSON`，详见[统一API](docs/workspace-api.md)。先GET当前工程和原任务，再按明确动作修改或执行；同一接口供页面及Agent使用。调用返回job后持续查询原项目，不重复提交来猜执行结果。复杂创作的job可能只是Agent任务简报，不是成片。
 
+完整独立组合审看片通过 `register-preview` 登记到对应工程，清单须绑定工程、基础版本及实际文件摘要；原步骤的成片审看/导出交付会显示，不能冒充内部渲染或用户已确认。具体输入和限制见统一API。
+
 需要用户审阅时调用action=review，记录返回id；用tool接口获得该项目审阅页路径，工作台页面可直接点“审阅…”进入同一请求。保持当前Agent工作，分段查询同一project/reviews直至用户决定，不在等待时结束制作回合。未确认不是同意；不得代确认真实预算、素材或最终认可。素材工程assets/final审阅通过其自身接口完成。
 
 制作按输入选择并读取对应指令：

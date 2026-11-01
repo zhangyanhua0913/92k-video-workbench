@@ -26,7 +26,7 @@ ACTIONS = {
 }
 ACTIONS['hybrid'] = ACTIONS['talk']
 for mode in ('talk', 'hybrid'):
-    ACTIONS[mode] = ACTIONS[mode] | {'adopt-style'}
+    ACTIONS[mode] = ACTIONS[mode] | {'adopt-style', 'register-preview'}
 READS = {'show', 'doctor', 'audit'}
 LONG = {'analyze', 'transcribe', 'render', 'auto-gold', 'prepare', 'quote', 'submit', 'poll', 'download', 'attach-source'}
 
@@ -259,11 +259,12 @@ class Workspace:
         elif s.get('paused'): status = '已暂停'
         elif any(x.get('status', x.get('action')) == 'pending' and x['revision'] == s['revision'] for x in reviews): status = '待审阅'
         elif current: status = '完成' if result.get('final_confirmed') or any(x.get('action') == 'confirm' and x.get('stage') == 'final' and x['revision'] == s['revision'] for x in reviews) else '待审阅'
+        elif any(x['revision'] == s['revision'] and x['available'] for x in result.get('independent_previews', [])): status = '待审阅'
         elif jobs and jobs[0]['status'] in ('failed', 'interrupted'): status = '失败' if jobs[0]['status'] == 'failed' else '待核查'
         elif jobs and jobs[0]['result'] and jobs[0]['result'].get('execution') == 'agent': status = '等待 Agent'
         elif s.get('source') or s.get('shots'): status = '可执行'
         elif s.get('script'): status = '等待 Agent'
-        return {'entry': row, 'state': result, 'jobs': jobs, 'status': status, 'outputs': [x['result'] for x in rendered], 'preferences': self.preferences(pid)}
+        return {'entry': row, 'state': result, 'jobs': jobs, 'status': status, 'outputs': [x['result'] for x in rendered], 'independent_previews': result.get('independent_previews', []), 'preferences': self.preferences(pid)}
 
     def preferences(self, pid, patch=None, revision=None):
         """UI position and creative intent; never a second engine or financial ledger."""
