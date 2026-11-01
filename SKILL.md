@@ -34,3 +34,5 @@ description: 打开92k视频工作台，统一管理本地工程，按口播剪�
 普通用户只拉取更新，不启用 `install_author_watch.py` 或 `publish.py --enable-author`。自定义内容优先放Git忽略的user/目录或包外；若改了核心源码，更新冲突时保留修改并请用户决定合并。阅读[版本与更新](docs/updates.md)了解限制。
 
 常用参数：GET /api/defaults?mode=talk|hybrid 读取本机新项目默认；POST同地址用mode/revision/patch显式保存speed、subtitle_burn、transcribe_language、packaging。只影响后续创建的对应类型项目，不自动改旧工程、执行或批准任务。用户当前要求变速时另走项目update及原审阅/合成；可以只保存用户明确指定的默认字段，不能擅自把临时参数学成习惯。配置中心可保存、记住当前参数和恢复原始默认，六步不变。
+
+用户本机可显式保存Agent创意偏好：制作前读取用户工作台目录 ~/.92k-video-workbench/agent-style-defaults.json（存在且schema=1时）；仅在对应mode和style匹配、用户未另指定时使用。它是创意方向，不替代项目参数或审阅授权；按当前素材重新规划内容和时码，不复制旧视频。文件留本机，不包含凭据。用户选择source_display时依源视频旋转后的实际画幅制作，不能把720p成片放大当原分辨率。
