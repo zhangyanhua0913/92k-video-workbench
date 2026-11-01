@@ -45,6 +45,8 @@ GET project新增preferences，缺记录时返回schema=1/revision=0/step=0，�
 - talk/hybrid：analyze、transcribe、roughcut/packaging（Agent简报）、auto-gold、render、retry-local、attach-source、adopt-style。已有review/decide语义保持；导出前须确认粗剪，包装及关键帧有变时也须确认。auto-gold显式采用已有本地模板，自动记录技术审阅，不能视为用户实际认可。新项目默认本地剪切，不装FredTalk也可导出已有字幕的视频。
 
 - talk/hybrid 独立组合登记：`POST /api/action`，JSON 为 `{"id":"项目ID","action":"register-preview","data":{"file":"exports/目录/film.mp4","revision":工程版本}}`。同目录 `manifest.json` 须注明 `type=independent-composition-preview`、`project_id`、`base_revision`、`sha256` 和 `technicalPass=true`；对应文件须位于该工程 exports。可选同目录 `captions.srt`。重复登记同一文件幂等；版本、工程或摘要不符拒绝。项目变更后显示历史，文件缺失或变更不提供播放。登记仅采信清单中的技术检查声明，不重新完整解码，不新建render任务、不授予最终认可；内部render的final确认不适用于独立审看片。
+
+- 口播封面：GET project 返回 `cover_styles`、`cover_plan` 和 `covers`；未保存时默认 `blue-yellow-portrait`、封面方案revision 0。`save-cover-plan` 接收 `style`、可选 `title` 和当前方案 `revision`，保存后状态 `waiting_agent`；这不是后台生成任务，须由对话中的Agent继续。先将PNG/JPEG通过import或upload导入本工程，再调用 `register-cover`，data包含 `file`（项目内media/exports相对路径）、`sha256`、`style`、`plan_revision` 与 `project_revision`。校验风格、项目与方案版本、图片格式和摘要，重复登记幂等；生成或导入结果保留旧版本，文件更改后不可播放。登记不确认用户认可，不改视频项目版本或启动收费服务。
 - generate：prepare、quote/submit/poll/download（data.operation为原operation ID）、render。预算在原director页面确认。未知任务保留原ID；paid和result_ready满足后才下载。没有新增自动收费授权。recover只读回原状态，解除pause须重新打开对应审阅并确认。
 - footage：audit、render。update允许title/script/narration/narration_hash/shots/paused；不保存第二份财务状态。review阶段assets/final；decide用request_id/revision/action（confirm/revise/pause）。许可未确认、未审看、文件hash变动、素材短缺或旁白时长不符均拒绝采纳/合成。
 

@@ -47,7 +47,9 @@ def execute(engine, root, action, data):
             return result
         with p.db() as db:
             reviews = [dict(r) for r in db.execute('SELECT * FROM reviews ORDER BY created DESC LIMIT 30')]
+        from cover_styles import COVER_STYLES
         return {'project': p.state(), 'tasks': p.tasks(), 'reviews': reviews, 'independent_previews': independent_previews(p),
+                'cover_plan': cover_plan(p), 'covers': cover_list(p), 'cover_styles': list(COVER_STYLES.values()),
                 'final_confirmed': p.approved('final')}
     if action == 'doctor':
         if engine == 'generate':
@@ -112,6 +114,8 @@ def execute(engine, root, action, data):
     else:
         from media import import_file, analyze, render
         if action == 'register-preview': return register_preview(p, data)
+        if action == 'save-cover-plan': return save_cover_plan(p, data)
+        if action == 'register-cover': return register_cover(p, data)
         if action == 'import': return import_file(p, data['file'], data['kind'], data.get('revision'))
         if action == 'recover': return p.recover(data.get('resume', False))
         if action == 'retry-local': return p.retry_local(data['task'])
@@ -131,6 +135,77 @@ def execute(engine, root, action, data):
         if action == 'attach-source':
             return attach_source(p, data)
     raise ValueError('不支持的执行操作。')
+
+
+def cover_plan(p, db=None):
+    from cover_styles import DEFAULT_COVER_STYLE
+    if db is None:
+        with p.db() as c: return cover_plan(p, c)
+    exists = db.execute("SELECT 1 FROM sqlite_master WHERE type='table' AND name='cover_plan'").fetchone()
+    row = db.execute('SELECT * FROM cover_plan WHERE id=1').fetchone() if exists else None
+    return dict(row) if row else {'revision': 0, 'style': DEFAULT_COVER_STYLE, 'title': '', 'status': 'not_requested'}
+
+
+def cover_list(p):
+    from core import file_hash
+    with p.db() as db:
+        exists = db.execute("SELECT 1 FROM sqlite_master WHERE type='table' AND name='covers'").fetchone()
+        rows = [dict(r) for r in db.execute('SELECT * FROM covers ORDER BY created DESC')] if exists else []
+    for row in rows:
+        try: row['available'] = file_hash(p.public_file(row['file'])) == row['sha256']
+        except (ValueError, OSError): row['available'] = False
+    return rows
+
+
+def save_cover_plan(p, data):
+    from core import check
+    from cover_styles import COVER_STYLES
+    style, title = data.get('style'), data.get('title', '')
+    check(style in COVER_STYLES, '封面风格不可用。')
+    check(isinstance(title, str) and len(title) <= 120, '封面文字不得超过120字。')
+    with p.db() as db:
+        old = cover_plan(p, db)
+        check(type(data.get('revision')) is int and data['revision'] == old['revision'], '封面方案已变，请刷新。', 'stale_revision', 409)
+        db.execute('CREATE TABLE IF NOT EXISTS cover_plan (id INTEGER PRIMARY KEY, revision INTEGER NOT NULL, style TEXT NOT NULL, title TEXT NOT NULL, status TEXT NOT NULL)')
+        revision = old['revision'] + 1
+        db.execute('INSERT OR REPLACE INTO cover_plan VALUES(1,?,?,?,?)', (revision, style, title.strip(), 'waiting_agent'))
+        p.event(db, 'cover_requested', {'revision': revision, 'style': style})
+    return {'revision': revision, 'style': style, 'title': title.strip(), 'status': 'waiting_agent'}
+
+
+def register_cover(p, data):
+    """Record a real imported image, without changing video or approving the cover."""
+    from core import check, file_hash
+    from media import probe
+    from cover_styles import COVER_STYLES
+    import time, uuid
+    style, rel = data.get('style'), data.get('file')
+    check(style in COVER_STYLES and isinstance(rel, str), '封面风格或文件无效。')
+    raw = Path(rel)
+    check(not raw.is_absolute() and '..' not in raw.parts and raw.parts and raw.parts[0] in ('media', 'exports'), '封面路径无效。')
+    path = p.public_file(rel)
+    check(path.suffix.lower() in ('.png', '.jpg', '.jpeg') and path.relative_to(p.root).parts[0] in ('media', 'exports'), '封面须为本工程图片。')
+    rel = path.relative_to(p.root).as_posix()
+    check(path.stat().st_size <= 32 * 1024 * 1024, '封面不能超过32MB。')
+    streams = probe(path).get('streams', [])
+    image = next((x for x in streams if x.get('codec_name') in ('png', 'mjpeg') and x.get('width', 0) > 0 and x.get('height', 0) > 0), None)
+    check(image is not None, '封面图片无法识别。')
+    sha = file_hash(path)
+    check(data.get('sha256') == sha, '封面文件摘要不匹配。')
+    with p.db() as db:
+        plan, state = cover_plan(p, db), p.state(db)
+        check(type(data.get('plan_revision')) is int and data['plan_revision'] == plan['revision'] and style == plan['style'], '封面方案已改变，请刷新。', 'stale_revision', 409)
+        check(type(data.get('project_revision')) is int and data['project_revision'] == state['revision'], '工程已改变，请刷新。', 'stale_revision', 409)
+        db.execute('CREATE TABLE IF NOT EXISTS covers (id TEXT PRIMARY KEY, file TEXT NOT NULL, sha256 TEXT NOT NULL, style TEXT NOT NULL, style_version TEXT NOT NULL, plan_revision INTEGER NOT NULL, project_revision INTEGER NOT NULL, width INTEGER NOT NULL, height INTEGER NOT NULL, created REAL NOT NULL)')
+        row = db.execute('SELECT * FROM covers WHERE file=? AND sha256=? AND style=? AND plan_revision=? AND project_revision=?', (rel, sha, style, plan['revision'], state['revision'])).fetchone()
+        if not row:
+            ident = uuid.uuid4().hex
+            db.execute('INSERT INTO covers VALUES(?,?,?,?,?,?,?,?,?,?)', (ident, rel, sha, style, COVER_STYLES[style]['version'], plan['revision'], state['revision'], image['width'], image['height'], time.time()))
+            p.event(db, 'cover_registered', {'id': ident, 'style': style, 'sha256': sha})
+            row = db.execute('SELECT * FROM covers WHERE id=?', (ident,)).fetchone()
+        if plan['revision'] and plan['status'] == 'waiting_agent':
+            db.execute("UPDATE cover_plan SET status='available' WHERE id=1")
+    return {**dict(row), 'available': True}
 
 
 def independent_previews(p):

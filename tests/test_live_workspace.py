@@ -1,5 +1,6 @@
 """Workspace contracts and real local media acceptance, no external model calls."""
 import hashlib
+import base64
 import contextlib
 import io
 import json
@@ -109,6 +110,41 @@ class LiveTests(unittest.TestCase):
         self.ws.call(self.pid, 'update', {'patch':{'script':'changed'},'revision':state['revision']})
         with self.assertRaises(WorkspaceError): self.ws.call(self.pid, 'register-preview', data)
         self.assertEqual(self.ws.snapshot(self.pid)['independent_previews'][0]['revision'], state['revision'])
+
+    def test_cover_plan_and_results_are_persistent_and_do_not_approve_video(self):
+        from shutil import which
+        probe = os.environ.get('TALKING_EDIT_FFPROBE') or which('ffprobe')
+        if not probe:
+            try:
+                sys.path.insert(0, str(ROOT/'skills/talking-edit/scripts'))
+                from media import binary
+                binary('ffprobe')
+            except (ValueError, ImportError): self.skipTest('ffprobe not configured')
+        snap = self.ws.snapshot(self.pid)
+        self.assertEqual(snap['cover_plan']['style'], 'blue-yellow-portrait')
+        self.assertEqual(snap['cover_plan']['revision'], 0)
+        video_before = snap['state']['project']
+        plan = self.ws.call(self.pid, 'save-cover-plan', {'style':'blue-yellow-portrait', 'title':'本期主题', 'revision':0})
+        self.assertEqual(plan['status'], 'waiting_agent')
+        with self.assertRaises(WorkspaceError): self.ws.call(self.pid, 'save-cover-plan', {'style':'blue-yellow-portrait', 'title':'stale', 'revision':0})
+        with self.assertRaises(WorkspaceError): self.ws.call(self.pid, 'save-cover-plan', {'style':'unknown', 'revision':1})
+        folder = Path(self.entry['root'])/'media'
+        png = folder/'cover.png'
+        png.write_bytes(base64.b64decode('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+aWQAAAABJRU5ErkJggg=='))
+        data = {'file':'media/cover.png', 'sha256':hashlib.sha256(png.read_bytes()).hexdigest(), 'style':plan['style'], 'plan_revision':1, 'project_revision':video_before['revision']}
+        with self.assertRaises(WorkspaceError): self.ws.call(self.pid, 'register-cover', {**data, 'plan_revision':0})
+        with self.assertRaises(WorkspaceError): self.ws.call(self.pid, 'register-cover', {**data, 'sha256':'wrong'})
+        self.ws.call(self.pid, 'register-cover', data)
+        self.ws.call(self.pid, 'register-cover', data)
+        snap = Workspace(self.ws.home).snapshot(self.pid)
+        self.assertEqual(snap['cover_plan']['status'], 'available')
+        self.assertEqual(len(snap['covers']), 1)
+        self.assertTrue(snap['covers'][0]['available'])
+        self.assertEqual(snap['state']['project'], video_before)
+        self.assertFalse(snap['state']['final_confirmed'])
+        self.assertEqual(snap['state']['reviews'], [])
+        png.write_bytes(b'changed')
+        self.assertFalse(self.ws.snapshot(self.pid)['covers'][0]['available'])
 
     def test_ui_preferences_do_not_approve_or_change_engine(self):
         original=self.ws.call(self.pid,'show')['project']

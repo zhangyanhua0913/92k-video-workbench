@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.1.0-prototype.12
+
+- Add a reusable blue-and-yellow portrait cover Skill as the default creative direction for talking-head video projects.
+- In the existing delivery step, save a per-project cover plan, import and review real cover images, and download registered covers. Agent-assisted generation remains explicit and does not create paid jobs.
+- Keep cover revisions and video approvals separate; reject stale or changed files while retaining older cover versions.
+
 ## 0.1.0-prototype.11
 
 - Register an Agent's independent talking-head composition against its original project and revision, with manifest/hash validation, idempotency and retained history.

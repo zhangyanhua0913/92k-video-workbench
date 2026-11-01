@@ -12,6 +12,37 @@ from workspace_service import Workspace,Server,ROOT
 
 @unittest.skipUnless(os.environ.get('WORKBENCH_BROWSER_TEST')=='1','Opt-in browser acceptance')
 class BrowserTests(unittest.TestCase):
+    def test_cover_flow_in_existing_delivery_step(self):
+        import base64
+        from playwright.sync_api import sync_playwright,expect
+        with tempfile.TemporaryDirectory() as tmp:
+            ws=Workspace(Path(tmp)/'index');entry=ws.create('talk','封面测试',str(Path(tmp)/'projects'));server=Server(ws)
+            thread=threading.Thread(target=server.serve_forever,daemon=True);thread.start()
+            try:
+                image=Path(tmp)/'cover.png'
+                image.write_bytes(base64.b64decode('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+aWQAAAABJRU5ErkJggg=='))
+                with sync_playwright() as p:
+                    browser=p.chromium.launch(channel='chrome',headless=True)
+                    try:
+                        page=browser.new_page();errors=[];page.on('pageerror',lambda e:errors.append(str(e)))
+                        page.goto(server.origin+'/#session='+server.token+'&project='+entry['id'])
+                        page.get_by_role('button',name='6. 导出交付',exact=True).click()
+                        expect(page.locator('#cover-style')).to_have_value('blue-yellow-portrait')
+                        page.get_by_label('封面主题或文字（可选）').fill('测试标题')
+                        page.get_by_role('button',name='保存方案并交给 Agent 制作').click()
+                        expect(page.get_by_text('方案已保存，等待 Agent 制作。工作台不会自动唤醒 Agent。')).to_be_visible()
+                        page.reload()
+                        expect(page.get_by_label('封面主题或文字（可选）')).to_have_value('测试标题')
+                        page.get_by_label('导入已有封面').set_input_files(str(image))
+                        page.get_by_role('button',name='导入并登记封面').click()
+                        expect(page.get_by_alt_text('视频封面')).to_be_visible()
+                        expect(page.get_by_role('link',name='下载封面图片')).to_be_visible()
+                        self.assertEqual(ws.snapshot(entry['id'])['cover_plan']['status'],'available')
+                        self.assertEqual(ws.call(entry['id'],'show')['reviews'],[])
+                        self.assertEqual(errors,[])
+                    finally: browser.close()
+            finally:server.shutdown();server.server_close();thread.join();ws.close()
+
     def test_four_original_step_sequences_save_and_resume(self):
         from playwright.sync_api import sync_playwright,expect
         baseline=(ROOT/'prototype/index.html').read_text(encoding='utf-8')

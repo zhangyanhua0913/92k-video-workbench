@@ -26,7 +26,7 @@ ACTIONS = {
 }
 ACTIONS['hybrid'] = ACTIONS['talk']
 for mode in ('talk', 'hybrid'):
-    ACTIONS[mode] = ACTIONS[mode] | {'adopt-style', 'register-preview'}
+    ACTIONS[mode] = ACTIONS[mode] | {'adopt-style', 'register-preview', 'save-cover-plan', 'register-cover'}
 READS = {'show', 'doctor', 'audit'}
 LONG = {'analyze', 'transcribe', 'render', 'auto-gold', 'prepare', 'quote', 'submit', 'poll', 'download', 'attach-source'}
 
@@ -264,7 +264,7 @@ class Workspace:
         elif jobs and jobs[0]['result'] and jobs[0]['result'].get('execution') == 'agent': status = '等待 Agent'
         elif s.get('source') or s.get('shots'): status = '可执行'
         elif s.get('script'): status = '等待 Agent'
-        return {'entry': row, 'state': result, 'jobs': jobs, 'status': status, 'outputs': [x['result'] for x in rendered], 'independent_previews': result.get('independent_previews', []), 'preferences': self.preferences(pid)}
+        return {'entry': row, 'state': result, 'jobs': jobs, 'status': status, 'outputs': [x['result'] for x in rendered], 'independent_previews': result.get('independent_previews', []), 'cover_plan': result.get('cover_plan'), 'covers': result.get('covers', []), 'cover_styles': result.get('cover_styles', []), 'preferences': self.preferences(pid)}
 
     def preferences(self, pid, patch=None, revision=None):
         """UI position and creative intent; never a second engine or financial ledger."""
