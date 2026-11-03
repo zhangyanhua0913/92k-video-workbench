@@ -2,11 +2,11 @@
 // Original V2 step labels/order are a user-approved contract.
 const MODES={
  talk:{name:'口播视频剪辑',given:'我已经录好了真人口播',out:'剪掉口误与停顿，校字幕，调整节奏和包装。',steps:['导入视频','字幕与粗剪','选择风格 Skill','包装与配乐','成片审看','导出交付'],styles:['clean','fred','gold','free','evidence','footage'],recommended:['clean','fred','gold']},
- footage:{name:'素材解说成片',given:'我有文案，想找真实画面来讲解',out:'按文案搜网络视频和图片，配旁白、字幕和动效。',steps:['文案与旁白','选择风格 Skill','分镜与素材需求','搜集与选择素材','成片审看','导出交付'],styles:['footage','free'],recommended:['footage']},
+ footage:{name:'素材解说成片',given:'我有文案，想找真实画面来讲解',out:'按文案搜网络视频和图片，配旁白、字幕和动效。',steps:['文案与旁白','选择风格 Skill','分镜与素材需求','搜集与选择素材','成片审看','导出交付'],styles:['footage','website','free'],recommended:['footage','website']},
  generate:{name:'AI 视频生成',given:'我想生成新的画面或数字人',out:'按分镜生成图片、视频、数字人口播，并合成。',steps:['脚本与分镜','选择制作 Skill','人物与声音','模型与预算','素材及成片审看','导出交付'],styles:['director'],recommended:['director']},
  hybrid:{name:'真人混搭成片',given:'我有真人视频，还想穿插资料和演示',out:'保留真人表达，加入视频素材、截图、图表和动效。',steps:['真人视频与资料','字幕与剪辑','选择风格 Skill','资料与画面映射','混搭成片审看','导出交付'],styles:['evidence','footage','free','gold','fred','clean'],recommended:['evidence','footage','free']}
 };
-const STYLES={clean:{name:'自然口播 / 无包装',id:'none',desc:'保留人物与原声，完成剪辑和字幕。'},fred:{name:'FredTalk 动态包装',id:'fredtalk-motion',desc:'按语义安排标题、说明与视觉组件。'},gold:{name:'暗金科技',id:'remotion-gold',desc:'金黑标题、重点强调与科技感动效。'},free:{name:'自由创意',id:'remotion-plugin',desc:'根据本期内容独立设计动画与构图。'},evidence:{name:'资料讲解与人物同屏',id:'remotion-evidence',desc:'人物与资料窗、图表、流程交替讲解。'},footage:{name:'网络素材解说',id:'narration-footage-v0-1',desc:'按文案搜索素材，检查版本、选段并融合动效。'},director:{name:'脚本分镜成片',id:'92k-video-director',desc:'图片、视频、数字人、配音接口的脚本编排。'}};
+const STYLES={clean:{name:'自然口播 / 无包装',id:'none',desc:'保留人物与原声，完成剪辑和字幕。'},fred:{name:'FredTalk 动态包装',id:'fredtalk-motion',desc:'按语义安排标题、说明与视觉组件。'},gold:{name:'暗金科技',id:'remotion-gold',desc:'金黑标题、重点强调与科技感动效。'},free:{name:'自由创意',id:'remotion-plugin',desc:'根据本期内容独立设计动画与构图。'},evidence:{name:'资料讲解与人物同屏',id:'remotion-evidence',desc:'人物与资料窗、图表、流程交替讲解。'},footage:{name:'网络素材解说',id:'narration-footage-v0-1',desc:'按文案搜索素材，检查版本、选段并融合动效。'},website:{name:'一天一个强大的网站',id:'website-showcase-v1',desc:'实测网站并录制操作画面，结合旁白和字幕介绍每期网站。'},director:{name:'脚本分镜成片',id:'92k-video-director',desc:'图片、视频、数字人、配音接口的脚本编排。'}};
 const $=id=>document.getElementById(id),initial=new URLSearchParams(location.hash.slice(1));
 let token=initial.get('session'),current=null,snapshot=null,step=0,defaultRoot='',poll=null,saveForm=null,formDirty=false,editorDirty=false,editorReady=false,prefs=null,transitioning=false;
 history.replaceState(null,'',location.pathname);
