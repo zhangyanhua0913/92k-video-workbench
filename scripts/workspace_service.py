@@ -277,7 +277,7 @@ class Workspace:
             check(revision == value['revision'], '另一页面已更新制作步骤，请刷新。', 409)
             check(set(patch) <= {'step', 'style', 'feedback'}, '未知界面字段。')
             if 'step' in patch: check(type(patch['step']) is int and 0 <= patch['step'] <= 5, '步骤无效。')
-            if 'style' in patch: check(patch['style'] in ({'footage', 'website', 'free'} if row['mode'] == 'footage' else {'director'} if row['mode'] == 'generate' else set()), '风格选择须使用原制作接口。')
+            if 'style' in patch: check(patch['style'] in ({'footage', 'website', 'free'} if row['mode'] == 'footage' else {'director', 'life'} if row['mode'] == 'generate' else set()), '风格选择须使用原制作接口。')
             if 'feedback' in patch:
                 check(isinstance(patch['feedback'], str) and len(patch['feedback']) <= 10000, '修改意见过长。')
                 patch = {**patch, 'feedback_project_revision': state['revision']}

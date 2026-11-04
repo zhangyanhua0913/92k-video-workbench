@@ -75,3 +75,5 @@ hybrid的attach-source输入file绝对路径、start/end真人源时间、source
 ## 本机常用参数
 
 GET /api/defaults?mode=talk|hybrid 返回mode、revision、values；POST /api/defaults接收mode/revision/patch，沿用会话及Origin校验。patch白名单：speed（1/1.1/1.15/1.2/1.25/1.3/1.35/1.5）、subtitle_burn布尔、transcribe_language（auto/zh/en/ja/ko）、packaging（该入口原六种口播风格ID）。冲突409须重读，不覆盖。参数在本机home/workspace.sqlite3的user_defaults表，每类型一条，仅用于新建工程；登记和读取旧工程不应用默认。无个人媒体/任务/字幕副本、预算或授权。原始默认speed=1/subtitle_burn=true/language=auto/packaging=none；恢复通过显式保存这组值，不影响已有工程。
+
+AI生成项目preferences.style支持director和life；life对应skills/life-script-video/SKILL.md，由Agent协作制作，不自动提交任务。风格意向保存不改变原引擎状态、预算或审阅。
