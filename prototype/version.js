@@ -1,1 +1,1 @@
-document.getElementById("version").textContent="本地交互原型 · 0.1.0-prototype.22";
+document.getElementById("version").textContent="本地交互原型 · 0.1.0-prototype.23";
