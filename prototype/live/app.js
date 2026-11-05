@@ -78,11 +78,12 @@ window.addEventListener('hashchange',async()=>{const target=new URLSearchParams(
 (async()=>{if(token)await api('/api/bootstrap',{});const d=await api('/api/projects');defaultRoot=d.default_root;$('version').textContent=d.version+' · 本机制作';navigation();if(initial.get('project'))await openProject(initial.get('project'));else await home();})().catch(e=>message(e.message));
 
 async function lifeTTSPanel(box){
- const status=await api('/api/life-tts/config'),c=card('人生剧本配音 · 04接口');box.append(c);
- c.append(el('p','固定音色：人生剧本角色。04令牌独立保存于本机加密配置，不与原92k积分Key混用。'));
- const state=el('p',status.configured?'令牌已配置（不显示原文）':'请填写04接口令牌');c.append(state);
- const key=field(c,'04接口令牌（保留sk-前缀）','','password');key.autocomplete='off';
- c.append(button('保存04令牌',async()=>{try{await api('/api/life-tts/config',{key:key.value});state.textContent='令牌已配置（不显示原文）';}finally{key.value='';}}),button('清除04令牌',async()=>{await api('/api/life-tts/config',{clear:true});key.value='';state.textContent='令牌已清除';}));
+ const status=await api('/api/life-tts/config'),c=card('04 接口市场 · 通用密钥');box.append(c);
+ c.append(el('p','该密钥供04接口市场的多个接口共用，只在本机加密保存。'));
+ const state=el('p',status.configured?'令牌已配置（不显示原文）':'请填写04接口市场通用密钥');c.append(state);
+ const key=field(c,'04接口市场通用密钥（保留sk-前缀）','','password');key.autocomplete='off';
+ c.append(button('保存通用密钥',async()=>{try{await api('/api/life-tts/config',{key:key.value});state.textContent='令牌已配置（不显示原文）';}finally{key.value='';}}),button('清除通用密钥',async()=>{await api('/api/life-tts/config',{clear:true});key.value='';state.textContent='令牌已清除';}));
+ c.append(el('h3','人生剧本配音测试'),el('p','当前测试音色：人生剧本角色。'));
  const text=field(c,'配音文字','你好，欢迎收听今天的人生剧本。','textarea');
  const paid=field(c,'同意本次接口配音可能产生费用',false,'checkbox');
  const result=el('div');c.append(result,button('用人生剧本角色生成配音',async()=>{const v=await api('/api/life-tts/synthesize',{text:text.value,allow_paid:paid.checked});paid.checked=false;result.replaceChildren();const a=el('audio');a.controls=true;a.src=v.url;const link=el('a','下载MP3');link.href=v.url;link.download='人生剧本配音.mp3';result.append(a,link);message('配音已保存，请试听；需要制作时再导入分镜。');}));

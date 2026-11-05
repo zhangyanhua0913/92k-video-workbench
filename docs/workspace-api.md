@@ -79,3 +79,5 @@ GET /api/defaults?mode=talk|hybrid 返回mode、revision、values；POST /api/de
 AI生成项目preferences.style支持director和life；life对应skills/life-script-video/SKILL.md，由Agent协作制作，不自动提交任务。风格意向保存不改变原引擎状态、预算或审阅。
 
 人生剧本04配音已提供配置中心/人物与声音面板：独立DPAPI令牌、固定人生剧本角色、手动费用授权生成/试听/下载，详见skills/life-script-video/references/voice-api.md。当前仅本地/模拟验证，真实调用待用户填令牌。
+
+04密钥是接口市场通用凭据，配音只是当前已接入的一个用途。此处名称调整沿用原加密存储和现有令牌，不迁移或重新保存凭据；不代表其他接口已自动接入。

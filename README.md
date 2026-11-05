@@ -76,3 +76,5 @@ python scripts/workbench.py preview
 AI视频生成的选择制作Skill新增“人生剧本”：原创人生故事、指定音色、漫画配图、已认可动态开头、遮挡身份证插图和分段纯音乐，见[制作Skill](skills/life-script-video/SKILL.md)。选择后由Agent继续；配音接口待配置，可先导入完整音频，不自动回退其他声线。
 
 人生剧本04配音已提供配置中心/人物与声音面板：独立DPAPI令牌、固定人生剧本角色、手动费用授权生成/试听/下载，详见skills/life-script-video/references/voice-api.md。当前仅本地/模拟验证，真实调用待用户填令牌。
+
+04密钥是接口市场通用凭据，配音只是当前已接入的一个用途。此处名称调整沿用原加密存储和现有令牌，不迁移或重新保存凭据；不代表其他接口已自动接入。
