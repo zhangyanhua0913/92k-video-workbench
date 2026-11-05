@@ -17,6 +17,8 @@ import urllib.request
 import urllib.error
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
+from life_tts import LifeTTS, LifeTTSError
+
 ROOT = Path(__file__).resolve().parents[1]
 MODES = {'talk': '口播视频剪辑', 'footage': '素材解说成片', 'generate': 'AI 视频生成', 'hybrid': '真人混搭成片'}
 ACTIONS = {
@@ -70,6 +72,7 @@ class Workspace:
         self.home = Path(home or os.environ.get('WORKBENCH_HOME', Path.home() / '.92k-video-workbench')).resolve()
         check(not self.home.is_relative_to(ROOT), '工作台数据须放在仓库之外。')
         self.home.mkdir(parents=True, exist_ok=True)
+        self.life_tts = LifeTTS(self.home)
         self.default_root = Path.home() / '92k-video-projects'
         self.dbfile = self.home / 'workspace.sqlite3'
         self.children = {}
@@ -380,8 +383,14 @@ class Handler(BaseHTTPRequestHandler):
                 if path == '/api/project': return self.reply(ws.snapshot(parse_qs(urlsplit(self.path).query).get('id', [''])[0]))
                 if path == '/media': return self.media()
                 if path == '/api/health': return self.reply({'ok': True})
+                if path == '/api/life-tts/config': return self.reply(ws.life_tts.status())
+                if path == '/api/life-tts/audio':
+                    file=ws.life_tts.audio(parse_qs(urlsplit(self.path).query).get('id',[''])[0]); raw=file.read_bytes()
+                    self.send_response(200); self.common(); self.send_header('Content-Type','audio/mpeg'); self.send_header('Content-Length',str(len(raw))); self.end_headers(); self.wfile.write(raw); return
                 raise WorkspaceError('地址不存在。', 404)
             data = json.loads(self.read_body())
+            if path == '/api/life-tts/config': return self.reply(ws.life_tts.configure(data))
+            if path == '/api/life-tts/synthesize': return self.reply(ws.life_tts.synthesize(data))
             if path == '/api/bootstrap': return self.reply({'ok': True}, cookie=True)
             if path == '/api/create': return self.reply(ws.create(data['mode'], data['title'], data.get('parent')))
             if path == '/api/register': return self.reply(ws.register(data['root'], data.get('mode')))
@@ -394,7 +403,7 @@ class Handler(BaseHTTPRequestHandler):
                 query = '?review=' + quote(data['review'], safe='') if data.get('review') else ''
                 return self.reply({'url': '/tool/' + data['id'] + '/' + query, 'mode': row['mode']})
             raise WorkspaceError('地址不存在。', 404)
-        except WorkspaceError as error: self.reply({'message': str(error)}, error.status)
+        except (WorkspaceError, LifeTTSError) as error: self.reply({'message': str(error)}, error.status)
         except (BrokenPipeError, ConnectionResetError, ConnectionAbortedError): pass
         except (ValueError, KeyError, TypeError): self.reply({'message': '输入格式无效，请刷新后核对。'}, 400)
         except Exception: self.reply({'message': '本地操作失败，原项目保留，请核查依赖与目录。'}, 500)
