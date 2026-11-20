@@ -101,6 +101,12 @@ cd E:/n8n/92k-video-workbench && python scripts/workbench.py open --port 18737
 4. **配音要授权**：`mix.py` 会真调付费接口。
 5. **不覆盖**：`--out` 目录已存在就换个名字，别把上一版盖掉。
 
+## 色彩：HDR 必须转 SDR（已内置）
+
+素材库 382 条是 **HEVC 10bit / HLG（arib-std-b67）真 HDR**，27 条 h264 是 SDR。`render.py` 逐片 `ffprobe` 查 `color_transfer`，只对 HDR 片段插 tonemap，SDR 原样过，输出统一打 bt709 标记。
+
+不转的后果（实测过）：8bit 直接截断，黄色标线发白、绿色车漆寡淡，整片发灰；发到手机端还可能整体偏亮。
+
 ## 已知精度限制（如实告诉用户）
 
 - **字幕时间**按块内字数比例估，与真实语音有 0.5–1 秒级偏差。要精确得装 `faster_whisper` 做词级对齐（当前环境没装）。

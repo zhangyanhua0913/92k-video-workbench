@@ -16,6 +16,31 @@ import subprocess
 import sys
 from pathlib import Path
 
+# 素材库里混着 HDR(HLG) 与 SDR；HDR 必须先 tonemap 到 bt709，否则 8bit 截断会发灰发白
+HDR_TRC = {"arib-std-b67", "smpte2084", "smpte-st-2084"}
+HDR_TO_SDR = ("zscale=t=linear:npl=100,format=gbrpf32le,zscale=p=bt709,"
+              "tonemap=hable:desat=0,zscale=t=bt709:m=bt709:r=tv,format=yuv420p")
+
+
+def probe_trc(ffprobe, path, cache):
+    """读视频流的 color_transfer，判断是不是 HDR。结果缓存，同一条原片只查一次。"""
+    key = str(path)
+    if key in cache:
+        return cache[key]
+    trc = ""
+    try:
+        r = subprocess.run(
+            [ffprobe, "-v", "error", "-select_streams", "v:0",
+             "-show_entries", "stream=color_transfer",
+             "-of", "default=nw=1:nk=1", str(path)],
+            capture_output=True, text=True, encoding="utf-8", errors="replace",
+            timeout=25)
+        trc = (r.stdout or "").strip().lower()
+    except Exception:
+        trc = ""
+    cache[key] = trc
+    return trc
+
 if hasattr(sys.stdout, "reconfigure"):
     sys.stdout.reconfigure(encoding="utf-8")
 
@@ -114,6 +139,8 @@ def main():
     w, h = (int(x) for x in a.res.lower().split("x"))
 
     # ---- 输入与视频滤镜
+    ffprobe = str(Path(ffmpeg).with_name("ffprobe.exe" if os.name == "nt" else "ffprobe"))
+    trc_cache = {}
     args, filters, labels = ["-y"], [], []
     for i, c in enumerate(clips):
         src = src_root / c["relpath"].replace("/", os.sep)
@@ -122,8 +149,13 @@ def main():
             return 1
         args += ["-ss", f"{c['source_in']:.3f}", "-t", f"{c['duration']:.3f}",
                  "-i", str(src)]
+        # 素材是大疆 HLG 10bit HDR；不转 SDR 直接 8bit 截断会让黄线发白、绿色寡淡，
+        # 手机上还容易偏亮发灰。只对 HDR 片段插 tonemap，SDR 片段原样过。
+        pre = ""
+        if probe_trc(ffprobe, src, trc_cache) in HDR_TRC:
+            pre = HDR_TO_SDR + ","
         filters.append(
-            f"[{i}:v]scale={w}:{h}:force_original_aspect_ratio=increase,"
+            f"[{i}:v]{pre}scale={w}:{h}:force_original_aspect_ratio=increase,"
             f"crop={w}:{h},fps={a.fps},setsar=1,setpts=PTS-STARTPTS[v{i}]")
         labels.append(f"[v{i}]")
 
@@ -196,6 +228,8 @@ def main():
            ["-filter_complex_script", str(fscript),
             "-map", "[vout]", "-map", "[aout]"] + enc +
            ["-pix_fmt", "yuv420p", "-c:a", "aac", "-b:a", "192k",
+            "-colorspace", "bt709", "-color_primaries", "bt709",
+            "-color_trc", "bt709",
             "-movflags", "+faststart", "-t", f"{total:.3f}", str(out)])
 
     print(f"渲染中… ({'CPU' if a.cpu else 'NVENC'}) 输出 {out.name}")
