@@ -420,6 +420,30 @@ def main():
                               f"{it['desc'][:30]}")
 
     V = {v["id"]: v for v in videos}
+
+    # 兜底：句尾剩余需求小于最小片段时长时会被 pick() 过滤，画面总长会短于旁白。
+    # 第一步：从最后一段向前找有源片余量的片段延长，使片段时长总和 ≥ 旁白总长
+    # （源片是连续视频，超出描述窗口几秒仍是同一画面，安全）
+    if timeline:
+        shortfall = round(total - sum(t["duration"] for t in timeline), 3)
+        for t in reversed(timeline):
+            if shortfall <= 0.05:
+                break
+            vlen = V[t["asset"]].get("duration")
+            room = (max(0.0, vlen - t["source_in"] - t["duration"])
+                    if vlen else 3.0)
+            if room <= 0.05:
+                continue
+            ext = min(shortfall, room)
+            t["duration"] = round(t["duration"] + ext, 3)
+            t["end"] = round(t["start"] + t["duration"], 3)
+            shortfall = round(shortfall - ext, 3)
+    # 第二步：起点吸附，每段起点对齐前一段结束点，保证拼接连续
+    for k in range(1, len(timeline)):
+        pe = timeline[k - 1]["end"]
+        if abs(timeline[k]["start"] - pe) > 0.001:
+            timeline[k]["start"] = round(pe, 3)
+            timeline[k]["end"] = round(pe + timeline[k]["duration"], 3)
     for it in timeline:
         it["relpath"] = V[it["asset"]]["relpath"]
 
