@@ -18,7 +18,21 @@ agent_created: true
 
 脚本不会猜「我妈端盆接漏水」该配什么画面——字面匹配在这套素材上已经验证失败（和任何 `desc` 都没有共同字符串）。所以流程里有一道**人工/AI 标注**，必须在配音之前做。
 
-## 四步流程
+## 固定约定（用户定过，别再问、别再改）
+
+| 项 | 值 |
+|---|---|
+| **配音** | 阿里云百炼克隆音色「张琰华的音色」`cd105126e4254060a3ad75d70c8b374c`，走 92K CLI |
+| **语速** | 用音色自带默认（音色内部已含 1.2 倍速），**禁止 atempo 二次变速** |
+| **字幕** | 默认要，逐字与文案一致 |
+| **BGM** | `E:\自媒体\背景音乐\2-安静的复苏.MP3`（该文件夹第 2 个） |
+| **BGM 音量** | 用默认值，**不调 `--bgm-volume`** |
+| **画幅** | 横屏 1080p 30fps，bt709 |
+| **隐私** | 默认 `public`（只用标「可公开」的原片） |
+
+用户如果没特别说，一律按这张表走，不要额外加变速、音量微调这些自作主张的处理。
+
+## 五步流程
 
 ### 1. 先切句（不花钱）
 
@@ -41,17 +55,31 @@ python scripts/mix.py --script 文案.txt --out "项目目录" --dry-run
 
 标完**把标注摘要给用户看一眼**，确认方向没错再往下——后面配音要花钱。
 
-### 3. 算时间轴 + 配画面
+### 3. 配音（默认阿里云克隆音色）
+
+```bash
+python scripts/aliyun_tts.py --script 文案.txt --out "项目目录"
+```
+
+- **默认音色**：`cd105126e4254060a3ad75d70c8b374c`（「张琰华的音色」，阿里云百炼 / `qwen-audio-3.1-tts-flash`），走你本机的 **92K CLI**（`speech quote → create → status → result`）。
+- **默认语速 = 音色自带**。用户已在音色里内置 1.2 倍速，**不要再做 atempo 变速**。
+- 平台这条链路**只接受 `format=wav`**，传 mp3 会被 `request_failed` 拒掉；脚本内部转 mp3 落 `配音/NN.mp3`。
+- 每块约 1 积分（438 字 / 5 块 ≈ 5 积分）。跑之前确认用户授权。
+- 音色重建后 ID 会变，`speech voices --mine` 查最新 id，用 `--voice` 覆盖。
+
+### 4. 算时间轴 + 配画面
 
 ```bash
 python scripts/mix.py --script 文案.txt --tags 文案标签.json --out "项目目录" --privacy public
 ```
 
-做的事：文案切块 → 逐块调配音 → 测实际时长 → 块内按字数分句对齐 → 每句按标签挑素材 → 写 `timeline.json`。
+做的事：文案切块 → 读 `配音/*.mp3`（有缓存就直接用）→ 测实际时长 → 块内按字数分句对齐 → 每句按标签挑素材 → 写 `timeline.json`。
 
-**这一步会真的调用付费配音**，跑之前确认用户授权。每块一次调用，不要自己决定批量付费。
+`mix.py` 本身内置了火山通道，但**默认流程不用它**——先用上一步的阿里云配音把 `配音/*.mp3` 生成好，这里就是缓存命中、不重复花钱。
 
-### 4. 看报告，再渲染
+**改了配音文件后必须删掉 `配音/*.wav`**：mp3→wav 那步有缓存，不清会继续用旧时长。
+
+### 5. 看报告，再渲染
 
 ```bash
 cat "项目目录/匹配报告.txt"
@@ -60,13 +88,14 @@ cat "项目目录/匹配报告.txt"
 每句配了哪段、取原片第几秒、命中哪些标签。**这是唯一能在花渲染时间前发现「文不对画」的地方。**
 
 ```bash
-python scripts/render.py --project "项目目录" --bgm "音乐.wav"
+# 默认就这一条：第 2 首背景音乐、音量默认（不做额外调整）
+python scripts/render.py --project "项目目录" --bgm "E:/自媒体/背景音乐/2-安静的复苏.MP3"
 python scripts/render.py --project "..." --no-subs      # 不要字幕
 python scripts/render.py --project "..." --duck         # 旁白压 BGM（默认不压）
 python scripts/render.py --project "..." --cpu          # NVENC 出问题时的退路
 ```
 
-一次转码，不产生碎片文件。默认 1920×1080 / 30fps / h264_nvenc。
+**BGM 默认规范**：`E:\自媒体\背景音乐\2-安静的复苏.MP3`，**音量用默认值，不要加 `--bgm-volume`**。用户明确说过不用调。
 
 ## 前置自检
 
@@ -89,8 +118,10 @@ cd E:/n8n/92k-video-workbench && python scripts/workbench.py open --port 18737
 | `--folders rural,food` | 限定题材：rural / kids / family / talk / city / scenery / food |
 | `--max-shot 4.5` | 单个片段最长秒数，想更快就调小 |
 | `--no-voice` | 跳过配音，用 `配音/*.mp3` 里已有的 |
-| `--bgm-lufs -26` | BGM 响度，比人声低 8dB 左右；觉得音乐太小就调到 -22 |
-| `--bgm-volume 1.0` | 归一化后再微调 |
+| `--voice <id>` | aliyun_tts.py 用，换克隆音色（音色重建后 ID 会变） |
+| `--force` | aliyun_tts.py 用，已有配音也重做 |
+| `--bgm-lufs -26` | BGM 响度基准，一般不用动 |
+| `--bgm-volume 1.0` | **默认，不要改**（用户要求 BGM 音量保持默认） |
 
 ## 硬约束
 

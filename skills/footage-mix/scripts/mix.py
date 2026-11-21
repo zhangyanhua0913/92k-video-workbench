@@ -162,11 +162,16 @@ def concat_wavs(paths, out):
 # ---------------------------------------------------------------- 匹配
 
 class Matcher:
+    # 画面描述里出现这些词的单元不进池子——公开视频里的隐私/敏感画面
+    SENSITIVE_WORDS = ("身份证", "证件", "银行卡", "合同", "车牌照", "手机支付")
+
     def __init__(self, shots, videos, privacy="public", folders=None):
         self.videos = {v["id"]: v for v in videos}
         pool = []
         for s in shots:
             if not s.get("desc"):
+                continue
+            if any(w in s["desc"] for w in self.SENSITIVE_WORDS):
                 continue
             if (s.get("attr") or {}).get("质量") not in ("A精选", "B可用"):
                 continue
