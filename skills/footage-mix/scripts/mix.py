@@ -18,6 +18,7 @@
 不切原片、不生成中间视频。只算时间轴，渲染交给 render.py。
 """
 import argparse
+import collections
 import json
 import os
 import random
@@ -40,6 +41,27 @@ DIM_WEIGHT = {"场景": 5, "情绪": 4, "动作": 3, "主题": 2, "人物": 2}
 QUALITY_SCORE = {"A精选": 4.0, "B可用": 1.0, "C废片": -99}
 MOTION_BONUS = {"high": 1.2, "mid": 0.8, "low": 0.3}
 TOP_K = 12          # 每次在得分最高的 K 个里随机挑，避免整片重复
+
+# ---- 镜头节奏（2026-11-21 定）
+# 一句一镜为主：句子合并成「镜头组」，一组一个镜头。
+SHOT_TARGET = 6.5     # 目标镜头长度，短句往这个值并
+SHOT_SOFT_MAX = 10.0  # 合并时的软上限，超过就不再并句
+SHOT_HARD_MAX = 15.0  # 硬上限，单句超长按这个值拆镜
+# ---- 画风一致性：同一章内只用同一个「风格族」
+# 族粒度要粗。用原始标签值（场景×时间有 52 种）会把每族切到只剩几条原片，
+# 结果全片反复用同 5 条素材，比跳变更难看。归并成「大环境 × 光线」后
+# 城市/日间有 71 条原片、自然/日间 46 条，够铺满整片还不重复。
+SCENE_BUCKET = {
+    "户外": "自然", "田地": "自然", "河边": "自然", "院子": "自然",
+    "街道": "城市", "车站": "城市", "商场": "城市", "集市": "城市",
+    "室内": "室内", "餐厅": "室内", "厨房": "室内", "楼道": "室内",
+    "车内": "车内", "车上": "车内",
+}
+LIGHT_BUCKET = {
+    "白天": "日间", "上午": "日间", "下午": "日间", "中午": "日间", "清晨": "日间",
+    "傍晚": "黄昏", "黄昏": "黄昏", "夜晚": "夜晚",
+}
+FAMILY_DIMS = ("场景", "时间")   # 族 = (大环境, 光线) 例如 (城市, 日间)
 
 
 # ---------------------------------------------------------------- 文本
@@ -159,6 +181,128 @@ def concat_wavs(paths, out):
     return out
 
 
+# ---------------------------------------------------------------- 镜头组
+
+def fam_key(shot):
+    """风格族 = (大环境, 光线)。同族意味着同一类环境和同一种光线，
+    观感上不会从农村无人机一下跳到城市高楼。"""
+    a = shot.get("attr") or {}
+    scene = a.get("场景")
+    light = a.get("时间")
+    return (SCENE_BUCKET.get(scene, scene), LIGHT_BUCKET.get(light, light))
+
+
+def build_groups(sentences, target=SHOT_TARGET, soft_max=SHOT_SOFT_MAX,
+                 hard_max=SHOT_HARD_MAX):
+    """把句子合并成镜头组：一组一个镜头，尽量让镜头跨完整句话。
+
+    - 单句超过 hard_max：拆成等长的几镜
+    - 短句往后并，直到 >= target；合并受 soft_max 约束
+    - 优先在配音块（block）边界收尾，避免一句话被章节切开
+    """
+    groups, i, n = [], 0, len(sentences)
+    while i < n:
+        s = sentences[i]
+        if s["duration"] > hard_max:
+            k = int(-(-s["duration"] // hard_max))
+            per = s["duration"] / k
+            for j in range(k):
+                groups.append({
+                    "start": round(s["start"] + j * per, 3),
+                    "end": round(s["start"] + (j + 1) * per, 3),
+                    "duration": round(per, 3), "sents": [s["i"]],
+                    "text": s["text"], "block": s["block"], "split": True})
+            i += 1
+            continue
+
+        dur, sents, texts = s["duration"], [s["i"]], [s["text"]]
+        blk, j = s["block"], i + 1
+        while j < n and dur < target:
+            nx = sentences[j]
+            if dur + nx["duration"] > soft_max:
+                break
+            if nx["block"] != blk:
+                break                       # 配音块边界一律断，章节结构别打乱
+            dur += nx["duration"]
+            sents.append(nx["i"]); texts.append(nx["text"])
+            blk = nx["block"]; j += 1
+        groups.append({
+            "start": round(s["start"], 3), "end": round(s["start"] + dur, 3),
+            "duration": round(dur, 3), "sents": sents,
+            "text": " ".join(texts), "block": sentences[i]["block"],
+            "split": False})
+        i = j
+    return groups
+
+
+def choose_family(pool, groups, tag_map, prev_family, used_videos=None, whole=None):
+    """给一个章节选风格族。
+
+    原则：**整片一个视觉基调**比"每句都贴文案"重要得多——逐句标签里往往
+    只有情绪没有场景，靠它投票会把片子选到只剩几条素材的偏门族上。
+    所以首章按『能否撑满全片』挑素材最充裕、原片最多样的族，之后一路沿用。
+    """
+    used = used_videos or set()
+    need = sum(g["duration"] for g in groups)
+    whole_need, whole_clips = whole if whole else (need, len(groups))
+    stat = collections.defaultdict(
+        lambda: {"secs": 0.0, "free": 0.0, "vids": set(), "free_vids": set(),
+                 "n": 0, "shot": None})
+    for s in pool:
+        k = fam_key(s)
+        if None in k:
+            continue
+        d = stat[k]
+        d["secs"] += s["duration"]
+        d["vids"].add(s["video_id"])
+        d["n"] += 1
+        if s["video_id"] not in used:
+            d["free"] += s["duration"]
+            d["free_vids"].add(s["video_id"])
+        if d["shot"] is None:
+            d["shot"] = s
+
+    # 1) 上一章的族还够铺满这一章 → 直接沿用，全片零风格跳变
+    if prev_family in stat:
+        d = stat[prev_family]
+        if d["free"] >= need * 1.15 and len(d["free_vids"]) >= len(groups) + 2:
+            return prev_family
+
+    # 2) 首章 / 被迫换族：这一章文案想要的氛围（逐句投票，只做微调）
+    vote = collections.Counter()
+    for g in groups:
+        for si in g["sents"]:
+            t = tag_map.get(si, {})
+            for dim in FAMILY_DIMS:
+                v = t.get(dim)
+                if v:
+                    vote[(dim, v)] += 1
+
+    best, best_sc = prev_family, -1e9
+    for k, d in stat.items():
+        # 底线：这一章要铺得满，未用原片至少比镜头数多 2 条
+        if d["free"] < need * 1.15 or len(d["free_vids"]) < len(groups) + 2:
+            continue
+        if prev_family is None:
+            # 首章要按全片口径把关，选能一路用到底的族
+            if d["free"] < whole_need * 1.05 or len(d["free_vids"]) < whole_clips + 2:
+                continue
+            sc = (min(d["free"] / max(whole_need, 1.0), 8.0) * 1.5 +
+                  min(len(d["free_vids"]) / max(whole_clips, 1), 6.0) * 2.0)
+            sc += vote.get(("场景", k[0]), 0) * 0.4 + random.random() * 0.3
+        else:
+            sc = 0.0
+            sc += vote.get(("场景", k[0]), 0) * 1.5
+            sc += vote.get(("时间", k[1]), 0) * 1.0
+            sc += min(d["free"] / max(need, 1.0), 6.0) * 0.8
+            sc += min(len(d["free_vids"]) / max(len(groups), 1), 8.0) * 0.3
+            sc += 5.0                                    # 勉强能沿用也优先沿用
+            sc += random.random() * 0.6
+        if sc > best_sc:
+            best, best_sc = k, sc
+    return best
+
+
 # ---------------------------------------------------------------- 匹配
 
 class Matcher:
@@ -215,13 +359,31 @@ class Matcher:
             sc += 1.5
         return sc, hit_dims
 
-    def pick(self, tags, need, used_recent, max_shot, min_shot):
+    def pick(self, tags, need, used_recent, max_shot, min_shot, pool=None,
+             stretch=False):
+        """stretch=True 时允许一个镜头跨过描述窗口继续往前取（源片是连续视频），
+        这样才有 6~15 秒的长镜头；默认 False 保持老行为。"""
+        base = pool if pool is not None else self.pool
+
+        def cap(s):
+            if not stretch:
+                return s["duration"]
+            vlen = self.videos[s["video_id"]].get("duration")
+            return min(vlen - s["start"], max_shot) if vlen else s["duration"]
+
         def rank(exclude):
             cands = []
-            for s in self.pool:
+            for s in base:
                 if s["video_id"] in exclude:
                     continue
                 sc, hits = self.score(s, tags)
+                # 一镜到底优先：够长就能一个镜头说完一句话，不用在同一句里切刀
+                if cap(s) >= need - 0.05:
+                    sc += 2.5
+                # 逆光/过曝的画面观感差，压一档（不排除，避免池子被抽干）
+                d = s.get("desc") or ""
+                if any(w in d for w in ("过曝", "烧成一片白", "逆光", "糊成", "模糊")):
+                    sc -= 1.5
                 # 小幅随机扰动：分数接近的会打散，避免整片反复用同几条高分素材
                 cands.append((sc + random.random() * 0.8, s, hits))
             cands.sort(key=lambda x: -x[0])
@@ -239,7 +401,7 @@ class Matcher:
                 break
             if s["video_id"] in local:          # 同一句内不重复同一条原片
                 continue
-            take = min(s["duration"], max_shot, need - got)
+            take = min(cap(s), max_shot, need - got)
             if take < min(min_shot, need):
                 continue
             out.append((s, round(take, 3), round(sc, 1), hits))
@@ -253,7 +415,7 @@ class Matcher:
                     break
                 if any(x[0] is s for x in out):
                     continue
-                take = min(s["duration"], max_shot, need - got)
+                take = min(cap(s), max_shot, need - got)
                 if take < min(min_shot, need):
                     continue
                 out.append((s, round(take, 3), round(sc, 1), hits))
@@ -298,8 +460,17 @@ def main():
     ap.add_argument("--no-voice", action="store_true")
     ap.add_argument("--dry-run", action="store_true",
                     help="只切句不配音，输出 句子清单.txt 供 Agent 标注")
-    ap.add_argument("--max-shot", type=float, default=4.5)
+    ap.add_argument("--max-shot", type=float, default=SHOT_HARD_MAX,
+                    help=f"单个镜头最长秒数，默认 {SHOT_HARD_MAX}")
     ap.add_argument("--min-shot", type=float, default=1.5)
+    ap.add_argument("--target-shot", type=float, default=SHOT_TARGET,
+                    help=f"目标镜头长度，短句往这个值合并，默认 {SHOT_TARGET}s")
+    ap.add_argument("--soft-max", type=float, default=SHOT_SOFT_MAX,
+                    help=f"合并句子的软上限，默认 {SHOT_SOFT_MAX}s")
+    ap.add_argument("--no-family", action="store_true",
+                    help="关闭画风一致性约束（默认按章节锁定同一个场景+时间风格族）")
+    ap.add_argument("--old-cut", action="store_true",
+                    help="回到旧的『按句铺片』行为（每句 1~2 个短片段）")
     a = ap.parse_args()
 
     cfg = json.loads(SRC_CONFIG.read_text(encoding="utf-8"))
@@ -387,42 +558,116 @@ def main():
             print(f"[WARN] {len(miss)} 句没拿到标签（{miss[:6]}），这些句用空镜垫")
 
     timeline, recent, report = [], [], []
-    for s in sentences:
-        tags = tag_map.get(s["i"], {})
-        need = s["duration"]
-        if a.tags:
-            picked = matcher.pick(tags, need, recent, a.max_shot, a.min_shot)
-        else:
-            picked = matcher.pick_motion(need, recent, a.max_shot, a.min_shot,
-                                         tags.get("motion"))
-        if not picked:
-            picked = matcher.pick_motion(need, [], a.max_shot, a.min_shot)
 
-        t = s["start"]
-        for shot, take, sc, hits in picked:
-            timeline.append({
-                "sentence": s["i"], "text": s["text"],
-                "asset": shot["video_id"], "shot_id": shot["id"],
-                "start": round(t, 3), "end": round(t + take, 3),
-                "source_in": round(shot["start"], 3),
-                "duration": round(take, 3), "score": sc,
-                "reason": ",".join(hits)[:70],
-                "desc": shot["desc"][:60],
-            })
-            t += take
-            recent.append(shot["video_id"])
-            # 整片内不重复用同一条原片；池子不够时 pick() 内部会自动放开
+    if a.old_cut:
+        for s in sentences:
+            tags = tag_map.get(s["i"], {})
+            need = s["duration"]
+            if a.tags:
+                picked = matcher.pick(tags, need, recent, a.max_shot, a.min_shot)
+            else:
+                picked = matcher.pick_motion(need, recent, a.max_shot, a.min_shot,
+                                             tags.get("motion"))
+            if not picked:
+                picked = matcher.pick_motion(need, [], a.max_shot, a.min_shot)
 
+            t = s["start"]
+            for shot, take, sc, hits in picked:
+                timeline.append({
+                    "sentence": s["i"], "text": s["text"],
+                    "asset": shot["video_id"], "shot_id": shot["id"],
+                    "start": round(t, 3), "end": round(t + take, 3),
+                    "source_in": round(shot["start"], 3),
+                    "duration": round(take, 3), "score": sc,
+                    "reason": ",".join(hits)[:70],
+                    "desc": shot["desc"][:60],
+                })
+                t += take
+                recent.append(shot["video_id"])
 
-        report.append(f"[{s['start']:7.2f}-{s['end']:7.2f}] {s['text'][:30]}")
-        if tags:
-            tagged = " ".join(f"{k}={tags[k]}" for k in DIM_WEIGHT if tags.get(k))
-            report.append(f"    标签：{tagged}")
-        for it in timeline:
-            if it["sentence"] == s["i"]:
-                report.append(f"    {it['duration']:4.1f}s @{it['source_in']:6.1f} "
-                              f"{it['asset'][:20]:20s} {it['reason'][:28]:28s} "
-                              f"{it['desc'][:30]}")
+            report.append(f"[{s['start']:7.2f}-{s['end']:7.2f}] {s['text'][:30]}")
+            if tags:
+                tagged = " ".join(f"{k}={tags[k]}" for k in DIM_WEIGHT if tags.get(k))
+                report.append(f"    标签：{tagged}")
+            for it in timeline:
+                if it["sentence"] == s["i"]:
+                    report.append(f"    {it['duration']:4.1f}s @{it['source_in']:6.1f} "
+                                  f"{it['asset'][:20]:20s} {it['reason'][:28]:28s} "
+                                  f"{it['desc'][:30]}")
+    else:
+        # ---- 镜头组模式：一组一个长镜头 + 章节内锁定画风
+        groups = build_groups(sentences, a.target_shot, a.soft_max, a.max_shot)
+        print(f"句子 {len(sentences)} → 镜头组 {len(groups)}"
+              f"（目标 {a.target_shot:.1f}s / 上限 {a.max_shot:.0f}s）")
+
+        chapters = collections.OrderedDict()
+        for g in groups:
+            chapters.setdefault(g["block"], []).append(g)
+
+        prev_family = None
+        whole = (sum(g["duration"] for g in groups), len(groups))
+        gi = 0
+        for blk, gs in chapters.items():
+            if a.no_family:
+                family, fpool = None, matcher.pool
+            else:
+                family = choose_family(matcher.pool, gs, tag_map, prev_family,
+                                       set(recent), whole)
+                fpool = ([s for s in matcher.pool if fam_key(s) == family]
+                         if family else matcher.pool)
+                prev_family = family or prev_family
+            label = "/".join(x or "?" for x in family) if family else "不限"
+            print(f"  章节{blk}｜风格族 {label}｜{len(gs)} 镜 / "
+                  f"{sum(g['duration'] for g in gs):.0f}s", flush=True)
+            report.append(f"===== 章节 {blk}｜风格族 {label}｜{len(gs)} 镜｜"
+                          f"{sum(g['duration'] for g in gs):.0f}s =====")
+
+            for g in gs:
+                # 组标签：组内各句标签合并，先出现的优先
+                gtags = {}
+                for si in g["sents"]:
+                    for k, v in (tag_map.get(si) or {}).items():
+                        if v and k not in gtags and k != "text":
+                            gtags[k] = v
+                need = g["duration"]
+                min_s = min(a.min_shot, need)
+
+                picked = []
+                if a.tags:
+                    picked = matcher.pick(gtags, need, recent, a.max_shot, min_s,
+                                          pool=fpool, stretch=True)
+                    if not picked and fpool is not matcher.pool:   # 族内耗尽，放开风格
+                        picked = matcher.pick(gtags, need, recent, a.max_shot, min_s,
+                                              stretch=True)
+                if not picked:
+                    picked = matcher.pick_motion(need, recent, a.max_shot, min_s)
+
+                t = g["start"]
+                for shot, take, sc, hits in picked:
+                    timeline.append({
+                        "sentence": g["sents"][0], "sentences": g["sents"],
+                        "group": gi, "text": g["text"],
+                        "asset": shot["video_id"], "shot_id": shot["id"],
+                        "start": round(t, 3), "end": round(t + take, 3),
+                        "source_in": round(shot["start"], 3),
+                        "duration": round(take, 3), "score": sc,
+                        "family": "/".join(x or "?" for x in family) if family else "",
+                        "reason": ",".join(hits)[:70],
+                        "desc": shot["desc"][:60],
+                    })
+                    t += take
+                    recent.append(shot["video_id"])
+
+                report.append(f"镜{gi:02d} [{g['start']:6.2f}-{g['end']:6.2f}] "
+                              f"{need:4.1f}s  {g['text'][:34]}")
+                for it in timeline:
+                    if it["group"] == gi:
+                        report.append(f"      {it['duration']:4.1f}s "
+                                      f"@{it['source_in']:6.1f} "
+                                      f"{it['asset'][:20]:20s} "
+                                      f"[{it['family'][:9]:9s}] "
+                                      f"{it['desc'][:34]}")
+                gi += 1
 
     V = {v["id"]: v for v in videos}
 

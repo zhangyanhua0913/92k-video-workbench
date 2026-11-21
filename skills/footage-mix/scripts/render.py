@@ -41,6 +41,16 @@ def probe_trc(ffprobe, path, cache):
     cache[key] = trc
     return trc
 
+
+def load_vlen():
+    """原片总时长，用来判断取片段时有没有余量（转场需要在头部多取半秒）。"""
+    try:
+        vids = json.loads((LIB / "索引" / "videos.json").read_text(
+            encoding="utf-8"))["videos"]
+        return {v["id"]: v.get("duration") for v in vids if v.get("duration")}
+    except Exception:
+        return {}
+
 if hasattr(sys.stdout, "reconfigure"):
     sys.stdout.reconfigure(encoding="utf-8")
 
@@ -109,6 +119,12 @@ def main():
     ap.add_argument("--fps", type=int, default=30)
     ap.add_argument("--crf", type=int, default=20)
     ap.add_argument("--cpu", action="store_true", help="强制用 CPU 编码（libx264）")
+    ap.add_argument("--transition", default="fade",
+                    choices=["fade", "dissolve", "wipeleft", "wiperight",
+                             "slideleft", "circleopen", "none"],
+                    help="镜头间转场，默认 fade（叠化）；none = 硬切")
+    ap.add_argument("--transition-duration", type=float, default=0.4,
+                    help="转场时长秒数，默认 0.4")
     a = ap.parse_args()
 
     cfg = json.loads(CONFIG.read_text(encoding="utf-8"))
@@ -141,22 +157,36 @@ def main():
     # ---- 输入与视频滤镜
     ffprobe = str(Path(ffmpeg).with_name("ffprobe.exe" if os.name == "nt" else "ffprobe"))
     trc_cache = {}
-    args, filters, labels = ["-y"], [], []
+    vlen = load_vlen()
+    T = 0.0 if a.transition == "none" else max(0.0, a.transition_duration)
+    args, filters, labels, takes = ["-y"], [], [], []
     for i, c in enumerate(clips):
         src = src_root / c["relpath"].replace("/", os.sep)
         if not src.is_file():
             print(f"原片缺失：{src}")
             return 1
-        args += ["-ss", f"{c['source_in']:.3f}", "-t", f"{c['duration']:.3f}",
-                 "-i", str(src)]
+        # 转场要在每段尾部多备 T 秒——xfade 是把两段重叠 T 秒，
+        # 不多取的话每切一次画面就短 T 秒，几十个镜头下来音画会彻底对不上。
+        extra = T if (T > 0 and i < len(clips) - 1) else 0.0
+        take = c["duration"] + extra
+        sin = float(c["source_in"])
+        vl = vlen.get(c["asset"])
+        if vl and sin + take > vl:                 # 余量不够，往前挪入点
+            sin = max(0.0, min(sin, vl - take))
+            if sin + take > vl:
+                take = max(0.05, vl - sin)
+        args += ["-ss", f"{sin:.3f}", "-t", f"{take:.3f}", "-i", str(src)]
+        takes.append(take)
         # 素材是大疆 HLG 10bit HDR；不转 SDR 直接 8bit 截断会让黄线发白、绿色寡淡，
         # 手机上还容易偏亮发灰。只对 HDR 片段插 tonemap，SDR 片段原样过。
         pre = ""
         if probe_trc(ffprobe, src, trc_cache) in HDR_TRC:
             pre = HDR_TO_SDR + ","
+        # format=yuv420p 显式统一像素格式：xfade 要求两路输入完全一致
         filters.append(
             f"[{i}:v]{pre}scale={w}:{h}:force_original_aspect_ratio=increase,"
-            f"crop={w}:{h},fps={a.fps},setsar=1,setpts=PTS-STARTPTS[v{i}]")
+            f"crop={w}:{h},fps={a.fps},setsar=1,format=yuv420p,"
+            f"setpts=PTS-STARTPTS[v{i}]")
         labels.append(f"[v{i}]")
 
     vi = len(clips)
@@ -185,7 +215,20 @@ def main():
         args += ["-stream_loop", "-1", "-i", str(norm)]
         bi = vi + 1
 
-    filters.append(f"{''.join(labels)}concat=n={len(clips)}:v=1:a=0[vcat]")
+    # ---- 拼接：有转场就链式 xfade，没有就 concat
+    if T > 0 and len(clips) > 1:
+        prev, acc = labels[0], takes[0]
+        for i in range(1, len(clips)):
+            off = max(0.0, acc - T)
+            tag = f"[x{i}]"
+            filters.append(f"{prev}{labels[i]}xfade=transition={a.transition}:"
+                           f"duration={T:.3f}:offset={off:.3f}{tag}")
+            acc = acc + takes[i] - T
+            prev = tag
+        filters.append(f"{prev}null[vcat]")
+        print(f"转场：{a.transition} {T:.2f}s × {len(clips)-1} 处")
+    else:
+        filters.append(f"{''.join(labels)}concat=n={len(clips)}:v=1:a=0[vcat]")
 
     # ---- 字幕
     if a.no_subs:

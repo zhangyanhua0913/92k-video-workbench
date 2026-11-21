@@ -29,6 +29,9 @@ agent_created: true
 | **BGM 音量** | 用默认值，**不调 `--bgm-volume`** |
 | **画幅** | 横屏 1080p 30fps，bt709 |
 | **隐私** | 默认 `public`（只用标「可公开」的原片） |
+| **镜头节奏** | 一句一镜为主：句子并成镜头组，目标 6.5s / 软上限 10s / 硬上限 15s（用户定：长镜头 10s 左右可以，一般别超 15s） |
+| **画风一致** | 全片锁定一个风格族（大环境×光线，如「城市/日间」），除非素材不够才换；用户受不了农村跳香港这种大跨度 |
+| **转场** | 默认 0.4s 叠化（fade），`--transition none` 可关 |
 
 用户如果没特别说，一律按这张表走，不要额外加变速、音量微调这些自作主张的处理。
 
@@ -116,7 +119,13 @@ cd E:/n8n/92k-video-workbench && python scripts/workbench.py open --port 18737
 | `--privacy public` | **默认**，只用标「可公开」的 174 条原片 |
 | `--privacy all` | 全部放开，含带娃/家人画面 |
 | `--folders rural,food` | 限定题材：rural / kids / family / talk / city / scenery / food |
-| `--max-shot 4.5` | 单个片段最长秒数，想更快就调小 |
+| `--max-shot 15` | 单个镜头最长秒数（硬上限，用户定一般别超 15s） |
+| `--target-shot 6.5` | 目标镜头长度，短句往这个值合并 |
+| `--soft-max 10` | 合并句子的软上限 |
+| `--no-family` | 关闭画风一致性约束（默认开） |
+| `--old-cut` | 回到旧的按句铺片（每句 1~2 个短片段），一般不用 |
+| `--transition fade` | 转场：fade / dissolve / wipeleft / slideleft / circleopen / none |
+| `--transition-duration 0.4` | 转场时长秒数 |
 | `--no-voice` | 跳过配音，用 `配音/*.mp3` 里已有的 |
 | `--voice <id>` | aliyun_tts.py 用，换克隆音色（音色重建后 ID 会变） |
 | `--force` | aliyun_tts.py 用，已有配音也重做 |
