@@ -123,8 +123,13 @@ def main():
                     choices=["fade", "dissolve", "wipeleft", "wiperight",
                              "slideleft", "circleopen", "none"],
                     help="镜头间转场，默认 fade（叠化）；none = 硬切")
-    ap.add_argument("--transition-duration", type=float, default=0.4,
-                    help="转场时长秒数，默认 0.4")
+    ap.add_argument("--transition-duration", type=float, default=0.6,
+                    help="转场时长秒数，版本2 默认 0.6（版本1 是 0.4）")
+    # ---- 版本2 新增：长镜头缓慢推近
+    ap.add_argument("--no-zoom", action="store_true",
+                    help="关闭缓慢推近（版本2 默认每个镜头 1.0→1.04 轻微推近）")
+    ap.add_argument("--zoom-to", type=float, default=1.04,
+                    help="推近终点倍率，默认 1.04（轻微）；越大推得越明显")
     a = ap.parse_args()
 
     cfg = json.loads(CONFIG.read_text(encoding="utf-8"))
@@ -182,10 +187,25 @@ def main():
         pre = ""
         if probe_trc(ffprobe, src, trc_cache) in HDR_TRC:
             pre = HDR_TO_SDR + ","
+        # ---- 版本2 新增：长镜头轻微缓慢推近（版本1 无此效果）
+        # 每个镜头独立从 1.0 推到 zoom_to，推进量按本段实际取用时长 take 分摊，
+        # 所以长短镜头都在结尾刚好到终点倍率。用 zoom var 逐帧累加，不用 t，
+        # 实测帧数与不推近时完全一致（3s@30fps 都是 90 帧），不破坏音画同步。
+        # d=1 保证一进一出；zoompan 后由链尾统一的 setsar/format/setpts 归零，
+        # 各段 PTS 仍从 0 起，xfade 输入一致。
+        if a.no_zoom:
+            zoom_filter = ""
+        else:
+            nframes = max(1, round(take * a.fps))
+            step = (a.zoom_to - 1.0) / nframes
+            zoom_filter = (
+                f",zoompan=z='min(zoom+{step:.8f},{a.zoom_to:.4f})':d=1:"
+                f"x='iw/2-(iw/zoom/2)':y='ih/2-(ih/zoom/2)':"
+                f"s={w}x{h}:fps={a.fps}")
         # format=yuv420p 显式统一像素格式：xfade 要求两路输入完全一致
         filters.append(
             f"[{i}:v]{pre}scale={w}:{h}:force_original_aspect_ratio=increase,"
-            f"crop={w}:{h},fps={a.fps},setsar=1,format=yuv420p,"
+            f"crop={w}:{h},fps={a.fps}{zoom_filter},setsar=1,format=yuv420p,"
             f"setpts=PTS-STARTPTS[v{i}]")
         labels.append(f"[v{i}]")
 
