@@ -245,10 +245,16 @@ def main():
                            f"duration={T:.3f}:offset={off:.3f}{tag}")
             acc = acc + takes[i] - T
             prev = tag
-        filters.append(f"{prev}null[vcat]")
+        filters.append(f"{prev}null[vcat_raw]")
         print(f"转场：{a.transition} {T:.2f}s × {len(clips)-1} 处")
     else:
-        filters.append(f"{''.join(labels)}concat=n={len(clips)}:v=1:a=0[vcat]")
+        filters.append(f"{''.join(labels)}concat=n={len(clips)}:v=1:a=0[vcat_raw]")
+
+    # ---- 视频补足到 total：源片余量不足时 xfade 链会比旁白短，
+    # 末尾 tpad 定格最后一帧到 total，避免旁白还在说画面已黑（音画对齐）。
+    # stop_mode=clone 定格末帧而非黑屏；总长用 total 精确控制。
+    filters.append(
+        f"[vcat_raw]tpad=stop_mode=clone:stop_duration={max(0.0, total):.3f}[vcat]")
 
     # ---- 字幕
     if a.no_subs:
