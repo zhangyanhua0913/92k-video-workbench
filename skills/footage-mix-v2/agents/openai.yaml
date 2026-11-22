@@ -1,0 +1,3 @@
+interface:
+  display_name: "本地素材混剪"
+  short_description: "文案自动配音，按句匹配本地 4K 素材库画面，烧字幕配乐出片"
