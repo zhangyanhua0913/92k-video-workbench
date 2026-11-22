@@ -78,11 +78,17 @@ def agent_brief(project,step):
         instructions=Path(__file__).resolve().parents[1]/'references/evidence-style.md'
     else:
         instructions=Path(spec['instructions']);check(file_hash(instructions)==spec['instructions_hash'],'第三方指令已变，请重新审阅注册。')
-    return {'execution':'agent','instructions':str(instructions),'project':s,'source_revision':spec.get('source_revision'),
-        'requirements':['当前用户原速、无额外增益、无 Fred 品牌及私人素材；用户要求优先。',
+    if selection=='footage-mix-v1':
+        requirements=['本风格为旁挂本地混剪：读取 skills/footage-mix/SKILL.md 按其五步流程制作，独立CLI出片，不建工作台工程。',
+            '固定约定遵从 SKILL.md：张琰华克隆音色自带1.2倍速禁止二次变速、黄字黑描边字幕、默认BGM不调音量、只用可公开素材、横屏1080p30fps、敏感镜头过滤。',
+            '逐句打标签后把摘要给用户看，配音前确认授权；出片为独立项目目录 mp4，交用户人工审看，不冒称工作台内部合成或已认可。']
+    else:
+        requirements=['当前用户原速、无额外增益、无 Fred 品牌及私人素材；用户要求优先。',
         '粗剪只提出候选并用 update 保存；页面确认前不执行。',
         '包装先提交候选和具体取舍；确认方向后制作真实 Remotion 片段及关键帧。',
-        '每个片段用 attach-scene 导入工程/视频/关键帧，记录来源组件与实际验证；不冒称已听审。']}
+        '每个片段用 attach-scene 导入工程/视频/关键帧，记录来源组件与实际验证；不冒称已听审。']
+    return {'execution':'agent','instructions':str(instructions),'project':s,'source_revision':spec.get('source_revision'),
+        'requirements':requirements}
 
 
 def attach_scene(project,args):

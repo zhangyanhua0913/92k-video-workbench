@@ -5,7 +5,7 @@ from core import check,atomic
 
 AREAS={'talk':'口播视频剪辑','generate':'视频生成','hybrid':'真人混搭风格'}
 BUILTIN={'fredtalk-motion':['talk'],'remotion-plugin':['talk','hybrid'],
-         'narration-footage-v0-1':['talk','hybrid'],'remotion-gold':['talk'],'remotion-evidence':['talk','hybrid'],'none':['talk','hybrid']}
+         'narration-footage-v0-1':['talk','hybrid'],'footage-mix-v1':['hybrid'],'remotion-gold':['talk'],'remotion-evidence':['talk','hybrid'],'none':['talk','hybrid']}
 
 def categories(spec):
     if spec['id'] in BUILTIN:return BUILTIN[spec['id']]

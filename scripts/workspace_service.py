@@ -101,7 +101,7 @@ class Workspace:
                 check(type(values['speed']) in (int, float) and values['speed'] in (1, 1.1, 1.15, 1.2, 1.25, 1.3, 1.35, 1.5), '不支持的速度。')
                 check(type(values['subtitle_burn']) is bool, '字幕设置无效。')
                 check(values['transcribe_language'] in ('auto', 'zh', 'en', 'ja', 'ko'), '转写语言无效。')
-                check(values['packaging'] in ('none', 'fredtalk-motion', 'remotion-gold', 'remotion-plugin', 'remotion-evidence', 'narration-footage-v0-1'), '风格无效。')
+                check(values['packaging'] in ('none', 'fredtalk-motion', 'remotion-gold', 'remotion-plugin', 'remotion-evidence', 'narration-footage-v0-1', 'footage-mix-v1'), '风格无效。')
                 rev += 1
                 db.execute('INSERT OR REPLACE INTO user_defaults VALUES(?,?,?)', (mode, rev, json.dumps(values)))
             return {'mode': mode, 'revision': rev, 'values': values}
