@@ -242,6 +242,8 @@ def render(project):
             for a,b in fred_result['retained_spans']:
                 length=(b-a)/s['speed'];mapping.append(dict(source_start=a,source_end=b,output_start=offset,output_end=offset+length));offset+=length
         cues, warnings = map_cues(s['cues'],mapping,s['speed'])
+        from subtitle_filter import enabled, filter_cues
+        if enabled(project.root): cues = filter_cues(cues)
         (folder/'captions.srt').write_text(srt_text(cues),encoding='utf-8')
         info = probe(source); video=next(x for x in info['streams'] if x['codec_type']=='video')
         w,h=display_size(video); scale=min(1,1920/max(w,h),1080/min(w,h)); w=max(2,int(w*scale)//2*2); h=max(2,int(h*scale)//2*2)

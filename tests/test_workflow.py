@@ -12,11 +12,21 @@ from pathlib import Path
 sys.path.insert(0,str(Path(__file__).resolve().parents[1]/'skills/talking-edit/scripts'))
 from core import Project, EditError, digest, atomic
 from media import intervals,map_cues,parse_srt,srt_text
+from subtitle_filter import filter_cues, enabled
 from web import Server
 from cli import wait
 
 
 class WorkflowTests(unittest.TestCase):
+    def test_subtitle_filter_and_scope(self):
+        rows = [dict(id='a', start=0, end=1, text='你可以先了解贷款方案'), dict(id='b', start=1, end=2, text='银行')]
+        filtered = filter_cues(rows)
+        self.assertEqual(filtered, [dict(id='a', start=0, end=1, text='你可以先了解')])
+        self.assertEqual(rows[0]['text'], '你可以先了解贷款方案')
+        self.assertTrue(enabled(self.p.root))
+        (self.p.root/'workbench-project.json').write_text('{"mode":"hybrid"}', encoding='utf-8')
+        self.assertFalse(enabled(self.p.root))
+
     def setUp(self):
         self.tmp=tempfile.TemporaryDirectory();self.p=Project.create(Path(self.tmp.name)/'project','免费测试')
 

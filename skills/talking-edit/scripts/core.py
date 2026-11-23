@@ -222,6 +222,8 @@ class Project:
             base.update(scenes=scenes, packaging=s['workflow']['packaging'],music=s.get('music'))
         if stage == 'final':
             base.update(subtitle_burn=s['subtitle_burn'], render=s['workflow']['render'])
+            from subtitle_filter import enabled, POLICY
+            if enabled(self.root): base['subtitle_filter'] = POLICY
             base['media_engine']=VERSION
         if stage in ('project', 'workflow'):
             base = {k: v for k, v in s.items() if k not in ('revision', 'paused')}
