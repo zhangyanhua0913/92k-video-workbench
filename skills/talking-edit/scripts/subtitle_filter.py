@@ -13,9 +13,16 @@ def enabled(root):
     return json.loads(marker.read_text(encoding='utf-8'))['mode'] == 'talk'
 
 def filter_cues(cues):
+    combined = ''.join(cue['text'] for cue in cues)
+    removed = bytearray(len(combined))
+    for match in PATTERN.finditer(combined):
+        removed[match.start():match.end()] = b'\x01' * (match.end() - match.start())
     result = []
+    offset = 0
     for cue in cues:
-        text = PATTERN.sub('', cue['text'])
+        original = cue['text']
+        text = ''.join(char for i, char in enumerate(original) if not removed[offset+i])
+        offset += len(original)
         if text.strip():
             result.append({**cue, 'text': text})
     return result
