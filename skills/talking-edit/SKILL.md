@@ -25,7 +25,7 @@ description: 剪辑已录好的真人口播视频，打开本地页面选择各�
 
 ## 制作与交互
 
-口播各风格统一按 scripts/subtitle_filter.py 的词表过滤成片显示字幕和交付 SRT：长词优先，单字也按字面匹配；只删除命中文字，整句为空则不显示。原字幕供校对保留，原声不因词表消音。Agent 独立制作字幕或交付审看片时也必须执行同一规则并核验最终画面及 SRT；包装标题不属于字幕。已有成片不会自动改变，需重新导出。
+口播各风格统一按 scripts/subtitle_filter.py 的词表过滤成片显示字幕和交付 SRT：只匹配词表中两个字及以上的词，长词优先，单字不单独匹配；只删除命中文字，整句为空则不显示。原字幕供校对保留，原声不因词表消音。Agent 独立制作字幕或交付审看片时也必须执行同一规则并核验最终画面及 SRT；包装标题不属于字幕。已有成片不会自动改变，需重新导出。
 
 1. 创建项目：`python SKILL_DIR/scripts/cli.py --project ABS_PROJECT create --title 标题`。已有项目先 recover，不另建来避开未知原任务。用 import 导入用户指定的视频、SRT、文稿或图片，也可打开 project 页让用户选择文件。
 2. `--project ABS_PROJECT review --stage project --no-browser` 返回本机 URL，用浏览器面板打开；不可用时去掉 no-browser 由系统浏览器打开。页面随新请求自动切阶段。每次交互执行 `wait --request ID --seconds 40` 分段等同一个请求；wait 含认证保活。未确认、保存草稿、关闭或超时都不授权后续。用户明确授权代确认时，仅在该范围内操作页面并在 note 记录授权来源；不把代确认记作用户已实际听看或认可，不扩展付费授权。

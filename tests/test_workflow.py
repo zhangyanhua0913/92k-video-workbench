@@ -23,6 +23,7 @@ class WorkflowTests(unittest.TestCase):
         filtered = filter_cues(rows)
         self.assertEqual(filtered, [dict(id='a', start=0, end=1, text='你可以先了解')])
         self.assertEqual(rows[0]['text'], '你可以先了解贷款方案')
+        self.assertEqual(filter_cues([dict(id='single', start=0, end=1, text='钱和金，签合同')]), [dict(id='single', start=0, end=1, text='钱和金，签')])
         self.assertEqual(filter_cues([dict(id='c', start=0, end=1, text='征'), dict(id='d', start=1, end=2, text='信良好')]), [dict(id='d', start=1, end=2, text='良好')])
         self.assertTrue(enabled(self.p.root))
         (self.p.root/'workbench-project.json').write_text('{"mode":"hybrid"}', encoding='utf-8')
