@@ -93,9 +93,20 @@ def is_cut(rows, out_root: Path, film_for) -> bool:
     return False
 
 
+def child_env() -> dict:
+    """Inject the PowerShell dir into PATH so workbench's hardcoded
+    subprocess.run(['powershell', ...]) (used to create node_modules junctions for
+    the gold animation) resolves on this machine, where only System32 is on PATH."""
+    env = os.environ.copy()
+    ps_dir = Path(os.environ.get("WINDIR", r"C:\Windows")) / "System32" / "WindowsPowerShell" / "v1.0"
+    if ps_dir.is_dir() and str(ps_dir) not in env.get("PATH", ""):
+        env["PATH"] = str(ps_dir) + os.pathsep + env.get("PATH", "")
+    return env
+
+
 def cli_json(cli: Path, args: list, timeout: int = 3600) -> dict:
     proc = subprocess.run([sys.executable, str(cli)] + args, capture_output=True,
-                          text=True, timeout=timeout)
+                          text=True, timeout=timeout, env=child_env())
     out = proc.stdout.strip()
     try:
         data = json.loads(out)
