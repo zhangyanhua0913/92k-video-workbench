@@ -209,6 +209,7 @@ def main():
     print(f"[批次] {batch['id']}  packaging={batch['packaging']} speed={batch['speed']}")
 
     added = []
+    new_folders = []
     for v, rel in pending:
         try:
             item = cli_json(cli, ["--project", str(anchor), "batch-add",
@@ -239,10 +240,19 @@ def main():
             film = newest_film(project_dir)
             if not film or not film.is_file():
                 raise RuntimeError("未找到导出成片 film.mp4")
-            target = out / rel
-            target.parent.mkdir(parents=True, exist_ok=True)
+            # Each video gets its own folder: <out>/<子目录>/<视频名>/<视频名>.mp4
+            stem = Path(rel).stem
+            folder_rel = (Path(rel).parent / stem).as_posix() if Path(rel).parent.as_posix() != "." else stem
+            target_dir = out / folder_rel
+            target_dir.mkdir(parents=True, exist_ok=True)
+            target = target_dir / (stem + ".mp4")
             shutil.copy2(film, target)
             film_rel = target.relative_to(out).as_posix()
+            # Copy the burned-in subtitle SRT into the same folder for cover copywriting.
+            srt_src = film.parent / "captions.srt"
+            if srt_src.is_file():
+                shutil.copy2(srt_src, target_dir / "字幕.srt")
+            new_folders.append({"相对路径": rel, "文件夹": folder_rel, "视频名": stem})
             # The manifest records how many gold-title animations were rendered.
             manifests = list((project_dir / "exports").glob("*/manifest.json"))
             if manifests:
@@ -262,6 +272,33 @@ def main():
                        round(time.time() - started, 1),
                        datetime.now().isoformat(timespec="seconds"), note])
             wb.save(ledger_path)
+
+    # Write a cover-copywriting brief for every freshly cut video. The Agent reads
+    # each video's 字幕.srt, then fills 标题/副标题 into this file before make_covers.py.
+    if new_folders:
+        brief_path = out / "封面文案清单.json"
+        brief = {"_说明": "Agent 读每个视频文件夹里的字幕.srt，把标题(用|分行)、副标题填进对应条目，再运行 make_covers.py",
+                 "人像目录": r"E:\自媒体\封面\个人头像",
+                 "条目": []}
+        if brief_path.exists():
+            try:
+                old = json.loads(brief_path.read_text(encoding="utf-8"))
+                brief["条目"] = old.get("条目", [])
+            except Exception:
+                pass
+        known = {x["相对路径"] for x in brief["条目"]}
+        for nf in new_folders:
+            if nf["相对路径"] in known:
+                continue
+            srt = out / nf["文件夹"] / "字幕.srt"
+            preview = ""
+            if srt.is_file():
+                text = srt.read_text(encoding="utf-8", errors="replace")
+                lines = [x.strip() for x in text.splitlines() if x.strip() and not x.strip().isdigit() and "-->" not in x]
+                preview = "".join(lines)[:300]
+            brief["条目"].append({**nf, "标题": "", "副标题": "", "字幕预览": preview})
+        brief_path.write_text(json.dumps(brief, ensure_ascii=False, indent=2), encoding="utf-8")
+        print(f"[封面清单] 待填文案 {len(new_folders)} 条 -> {brief_path}")
 
     ok = sum(1 for row in ws.iter_rows(min_row=2, values_only=True) if row[4] == "done")
     bad = sum(1 for row in ws.iter_rows(min_row=2, values_only=True) if row[4] == "failed")
