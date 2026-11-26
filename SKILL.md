@@ -27,7 +27,7 @@ description: 打开92k视频工作台，统一管理本地工程，按口播剪�
 - 文案/旁白配真实素材 → [narration-footage](skills/narration-footage/SKILL.md)。
 - 文案配**本地自拍素材库**（不联网找素材）→ 默认用 [footage-mix-v2](skills/footage-mix-v2/SKILL.md)（版本2：0.6s叠化+每镜轻微推近+末帧定格对齐旁白）；只有用户明确要原版观感时才用 [footage-mix](skills/footage-mix/SKILL.md) 版本1（0.4s叠化、无推近，也可在版本2 加 `--transition-duration 0.4 --no-zoom` 还原）。两者都读 E:\自媒体\原始素材库 索引，按句标签配画面、配音、烧字幕配乐，独立出片不建工作台工程。
 - 生成新画面/数字人 → [92k-video-director](skills/92k-video-director/SKILL.md)。
-- 真人穿插资料 → talking-edit底座，结合narration-footage及资料讲解风格；在真人混搭第3步选「本地素材混剪（版本1）」（style id `footage-mix-v1`）时，按 [footage-mix](skills/footage-mix/SKILL.md) 五步流程独立出片，不改六步、不建工作台工程、不代认可。
+- 真人穿插资料 → talking-edit底座，结合narration-footage及资料讲解风格；第3步选「本地素材混剪（版本1）」（`footage-mix-v1`）或「本地素材混剪（版本2）」（`footage-mix-v2`，口播剪辑与真人混搭入口都可选）时，分别按对应 SKILL.md 流程独立出片，不改六步、不建工作台工程、不代认可。
 
 子工具统一入口：`python scripts/workbench.py skill SKILL_NAME -- 原CLI参数`。工具启动会检查更新，但活动的包装器会话会阻止其他包装器更换源码。若更新成功，执行前重新读取该子Skill。直接调用子CLI会绕过自动更新和会话保护，仅用于已固定版本的任务。
 

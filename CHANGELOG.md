@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.1.0-prototype.62
+
+- Register the bundled footage-mix v2 skill as selectable style `footage-mix-v2` in both the talking-head and hybrid entrances, keeping v1 unchanged.
+- Add v2 to the backend style registry, packaging whitelist, workspace category map and Agent brief, and to both the live and static prototype style lists as a compatible (not recommended) style.
+- Sync bundled-skill manifest, routing docs, design notes and release inventory.
+
 ## 0.1.0-prototype.12
 
 - Add a reusable blue-and-yellow portrait cover Skill as the default creative direction for talking-head video projects.
