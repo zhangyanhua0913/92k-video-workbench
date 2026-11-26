@@ -46,14 +46,21 @@ def specs():
         bundled=[dict(id='narration-footage-v0-1',name='网络素材解说 · v0.1（Agent制作）',stages=['packaging'],
             execution='agent',input='reviewed-timeline',output='remotion-clips',version='0.1.0',dependency=None,
             instructions=str(instructions),instructions_hash=sha,source_revision=sha)]
+    entries=json.loads(manifest.read_text(encoding='utf-8')) if manifest.is_file() else {}
     mix_instructions=root/'skills/footage-mix/references/workbench-adapter.md'
-    if manifest.is_file() and mix_instructions.is_file() and not any(x['id']=='footage-mix-v1' for x in extensions):
-        entries=json.loads(manifest.read_text(encoding='utf-8'))
+    if mix_instructions.is_file() and not any(x['id']=='footage-mix-v1' for x in extensions):
         if 'footage-mix' in entries:
             sha=entries['footage-mix']['adapter_sha256']
             bundled=bundled+[dict(id='footage-mix-v1',name='本地素材混剪 · 版本1（Agent+本地）',stages=['packaging'],
                 execution='agent',input='reviewed-timeline',output='local-mixtape',version='1.0.0',dependency=None,
                 workspace_categories=['hybrid'],instructions=str(mix_instructions),instructions_hash=sha,source_revision=sha)]
+    mix2_instructions=root/'skills/footage-mix-v2/references/workbench-adapter.md'
+    if mix2_instructions.is_file() and not any(x['id']=='footage-mix-v2' for x in extensions):
+        if 'footage-mix-v2' in entries:
+            sha=entries['footage-mix-v2']['adapter_sha256']
+            bundled=bundled+[dict(id='footage-mix-v2',name='本地素材混剪 · 版本2（Agent+本地）',stages=['packaging'],
+                execution='agent',input='reviewed-timeline',output='local-mixtape',version='2.0.0',dependency=None,
+                workspace_categories=['talk','hybrid'],instructions=str(mix2_instructions),instructions_hash=sha,source_revision=sha)]
     return SPECS + bundled + extensions
 
 

@@ -19,5 +19,11 @@
     "source": "authored local footage mixing source",
     "note": "混剪视频版本1；style id footage-mix-v1，真人混搭入口风格选项，独立CLI出片",
     "adapter_sha256": "1c129e49b7bfe7f5b7e7dc4b737bee8cca45940699572c436262237c6081ca84"
+  },
+  "footage-mix-v2": {
+    "version": "2.0.0+workbench-live.1",
+    "source": "authored local footage mixing source",
+    "note": "混剪视频版本2；style id footage-mix-v2，口播剪辑与真人混搭入口风格选项，0.6s叠化+缓慢推近，独立CLI出片",
+    "adapter_sha256": "1c129e49b7bfe7f5b7e7dc4b737bee8cca45940699572c436262237c6081ca84"
   }
 }

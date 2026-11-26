@@ -25,7 +25,7 @@ description: 打开92k视频工作台，统一管理本地工程，按口播剪�
 - 已录真人视频 → [talking-edit](skills/talking-edit/SKILL.md)。
 - 网站系列介绍、实测及录屏 → [website-showcase](skills/website-showcase/SKILL.md)。
 - 文案/旁白配真实素材 → [narration-footage](skills/narration-footage/SKILL.md)。
-- 文案配**本地自拍素材库**（不联网找素材）→ [footage-mix](skills/footage-mix/SKILL.md)；读 E:\自媒体\原始素材库 索引，按句标签配画面、配音、烧字幕配乐，独立出片不建工作台工程。
+- 文案配**本地自拍素材库**（不联网找素材）→ 默认用 [footage-mix-v2](skills/footage-mix-v2/SKILL.md)（版本2：0.6s叠化+每镜轻微推近+末帧定格对齐旁白）；只有用户明确要原版观感时才用 [footage-mix](skills/footage-mix/SKILL.md) 版本1（0.4s叠化、无推近，也可在版本2 加 `--transition-duration 0.4 --no-zoom` 还原）。两者都读 E:\自媒体\原始素材库 索引，按句标签配画面、配音、烧字幕配乐，独立出片不建工作台工程。
 - 生成新画面/数字人 → [92k-video-director](skills/92k-video-director/SKILL.md)。
 - 真人穿插资料 → talking-edit底座，结合narration-footage及资料讲解风格；在真人混搭第3步选「本地素材混剪（版本1）」（style id `footage-mix-v1`）时，按 [footage-mix](skills/footage-mix/SKILL.md) 五步流程独立出片，不改六步、不建工作台工程、不代认可。
 
