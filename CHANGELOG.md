@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.1.0-prototype.62
+## 0.1.0-prototype.63
 
 - Register the bundled footage-mix v2 skill as selectable style `footage-mix-v2` in both the talking-head and hybrid entrances, keeping v1 unchanged.
 - Add v2 to the backend style registry, packaging whitelist, workspace category map and Agent brief, and to both the live and static prototype style lists as a compatible (not recommended) style.
